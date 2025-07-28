@@ -1,0 +1,2189 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vitalis 5.0 - Análise Clínica Inteligente</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js para visualização de dados -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        /* Definição de variáveis de cor para os temas claro e escuro */
+        :root {
+            --background: #f1f5f9; /* slate-100 */
+            --foreground: #0f172a; /* slate-900 */
+            --card: #ffffff; /* white */
+            --border: #e2e8f0; /* slate-200 */
+            --text-primary: #1e293b; /* slate-800 */
+            --text-secondary: #64748b; /* slate-500 */
+            --primary: #0ea5e9; /* sky-500 */
+            --ring: #38bdf8; /* sky-400 */
+        }
+
+        .dark {
+            --background: #020617; /* slate-950 */
+            --foreground: #f8fafc; /* slate-50 */
+            --card: #0f172a; /* slate-900 */
+            --border: #1e293b; /* slate-800 */
+            --text-primary: #f1f5f9; /* slate-100 */
+            --text-secondary: #94a3b8; /* slate-400 */
+            --primary: #38bdf8; /* sky-400 */
+            --ring: #0ea5e9; /* sky-500 */
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--background);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .view, .page-content, .modal { display: none; }
+        .view.active, .page-content.active, .modal.flex { display: block; }
+        .modal.flex { display: flex; }
+        
+        .card { background-color: var(--card); color: var(--text-primary); }
+        .form-input { 
+            margin-top: 0.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--border); 
+            padding: 0.6rem 0.75rem; transition: box-shadow 0.2s, background-color 0.3s, border-color 0.3s;
+            background-color: var(--background);
+            color: var(--text-primary);
+        }
+        .form-input:focus { outline: 2px solid transparent; outline-offset: 2px; box-shadow: 0 0 0 2px var(--ring); }
+        
+        #sidebar { transition: transform 0.3s ease-in-out; }
+        #sidebar-overlay { transition: opacity 0.3s ease-in-out; }
+
+        @media (max-width: 1023px) {
+            #sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                height: 100%;
+                z-index: 50;
+            }
+            #sidebar.open { transform: translateX(0); }
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3); width: 24px; height: 24px;
+            border-radius: 50%; border-left-color: #ffffff;
+            animation: spin 1s ease infinite;
+        }
+        .main-spinner {
+            border: 4px solid var(--border); width: 36px; height: 36px;
+            border-radius: 50%; border-left-color: var(--primary);
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Estilos para links de navegação na sidebar */
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; /* 12px */
+            padding: 0.75rem; /* 12px */
+            border-radius: 0.5rem; /* 8px */
+            font-weight: 500;
+            color: #cbd5e1; /* slate-300 */
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .nav-link:hover {
+            background-color: #1e293b; /* slate-800 */
+            color: #ffffff;
+        }
+        .nav-link.active {
+            background-color: #0ea5e9; /* sky-500 */
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+
+        <div id="global-loader" class="fixed inset-0 z-[999] flex items-center justify-center" style="background-color: rgba(255,255,255,0.5); backdrop-filter: blur(4px);">
+            <div class="main-spinner"></div>
+        </div>
+
+        <div id="auth-view" class="view">
+             <div class="flex min-h-screen items-center justify-center p-4" style="background-color: var(--background);">
+                <div class="w-full max-w-md">
+                    <div class="text-center mb-8">
+                        <svg class="mx-auto h-12 w-auto text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>
+                        <h1 class="text-3xl font-bold mt-2" style="color: var(--text-primary);">Vitalis</h1>
+                        <p style="color: var(--text-secondary);">A sua plataforma de análise clínica.</p>
+                    </div>
+                    <div class="card p-8 rounded-2xl shadow-xl border" style="border-color: var(--border);">
+                        <form id="login-form">
+                           <h2 class="text-2xl font-semibold mb-6 text-center">Login</h2>
+                            <div class="space-y-4">
+                                <button type="button" id="google-login-btn" class="w-full flex justify-center items-center gap-3 border py-2.5 px-4 rounded-lg hover:bg-slate-500/10 transition-colors font-semibold" style="border-color: var(--border);">
+                                    <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C39.712,34.437,44,28.3,44,20C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                                    Entrar com o Google
+                                </button>
+                                <div class="flex items-center text-sm"><div class="flex-grow border-t" style="border-color: var(--border);"></div><span class="flex-shrink mx-4" style="color: var(--text-secondary);">ou</span><div class="flex-grow border-t" style="border-color: var(--border);"></div></div>
+                                <div><label for="login-email" class="block text-sm font-medium" style="color: var(--text-secondary);">Email</label><input type="email" id="login-email" name="login-email" required class="form-input"></div>
+                                <div><label for="login-password" class="block text-sm font-medium" style="color: var(--text-secondary);">Senha</label><input type="password" id="login-password" name="login-password" required class="form-input"></div>
+                                <button type="submit" class="w-full bg-sky-600 text-white py-2.5 px-4 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors font-semibold flex justify-center items-center"><span class="btn-text">Login</span><div class="spinner hidden"></div></button>
+                            </div>
+                        </form>
+                    </div>
+                    <p class="mt-6 text-center text-sm">Não tem uma conta? <a href="#" id="go-to-register" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">Registe-se</a></p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="register-view" class="view">
+             <div class="flex min-h-screen items-center justify-center p-4" style="background-color: var(--background);">
+                <div class="w-full max-w-md">
+                     <div class="text-center mb-8"><h1 class="text-3xl font-bold">Criar a sua Conta Vitalis</h1></div>
+                    <div class="card p-8 rounded-2xl shadow-xl border" style="border-color: var(--border);">
+                        <form id="register-form">
+                             <div class="space-y-4">
+                                <div><label for="register-name" class="block text-sm font-medium" style="color: var(--text-secondary);">Nome Completo</label><input type="text" id="register-name" name="register-name" required class="form-input"></div>
+                                <div><label for="register-email" class="block text-sm font-medium" style="color: var(--text-secondary);">Email</label><input type="email" id="register-email" name="register-email" required class="form-input"></div>
+                                <div><label for="register-password" class="block text-sm font-medium" style="color: var(--text-secondary);">Senha</label><input type="password" id="register-password" name="register-password" required class="form-input"></div>
+                                <button type="submit" class="w-full bg-emerald-600 text-white py-2.5 px-4 rounded-lg hover:bg-emerald-700 font-semibold flex justify-center items-center"><span class="btn-text">Registar</span><div class="spinner hidden"></div></button>
+                            </div>
+                        </form>
+                    </div>
+                     <p class="mt-6 text-center text-sm">Já tem uma conta? <a href="#" id="go-to-login" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">Faça login</a></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-app-view" class="view">
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden opacity-0"></div>
+            <div class="flex h-screen" style="background-color: var(--background);">
+                <!-- Sidebar -->
+                <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col p-4 lg:flex lg:relative lg:translate-x-0">
+                    <div class="flex items-center justify-between gap-3 mb-10 px-2">
+                        <div class="flex items-center gap-3">
+                            <svg class="h-10 w-auto text-sky-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>
+                            <h1 class="text-2xl font-bold">Vitalis</h1>
+                        </div>
+                        <button id="close-sidebar-btn" class="lg:hidden text-slate-400 hover:text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <nav class="flex-grow">
+                        <ul class="space-y-2">
+                            <li><a href="#" class="nav-link active" data-page="dashboard-content"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg><span>Dashboard</span></a></li>
+                            <li><a href="#" class="nav-link" data-page="patients-list-content"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg><span>Pacientes</span></a></li>
+                        </ul>
+                    </nav>
+                    <div class="mt-auto">
+                        <div class="px-2 mb-4"><p id="user-greeting" class="text-sm text-slate-400"></p></div>
+                        <button id="logout-btn" class="w-full text-left flex items-center gap-3 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" /></svg>Sair</button>
+                    </div>
+                </aside>
+
+                <!-- Main Content -->
+                <main class="flex-1 flex flex-col h-screen">
+                    <!-- Top Bar for mobile -->
+                    <header class="lg:hidden p-4 sticky top-0 z-30 flex justify-between items-center border-b" style="background-color: var(--card); border-color: var(--border);">
+                        <button id="menu-btn" style="color: var(--text-secondary);">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        </button>
+                        <h1 class="font-bold text-lg text-sky-500">Vitalis</h1>
+                        <button id="theme-toggle-mobile" style="color: var(--text-secondary);"></button>
+                    </header>
+                    
+                    <div class="flex-1 overflow-y-auto">
+                        <!-- Dashboard Page -->
+                        <div id="dashboard-content" class="page-content active">
+                            <div class="p-4 sm:p-8">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6">
+                                    <div>
+                                        <h2 class="text-3xl font-bold">Visão Geral</h2>
+                                        <p id="dashboard-date" class="text-sm" style="color: var(--text-secondary);"></p>
+                                    </div>
+                                    <div class="flex items-center gap-4 mt-4 sm:mt-0">
+                                        <div id="dashboard-clock" class="text-2xl sm:text-3xl font-mono font-bold bg-card px-4 py-2 rounded-lg shadow-sm border" style="border-color: var(--border);"></div>
+                                        <button id="theme-toggle-desktop" class="hidden lg:block p-2 rounded-full" style="color: var(--text-secondary); background-color: var(--card); border: 1px solid var(--border);"></button>
+                                    </div>
+                                </div>
+                                <div id="dashboard-loader" class="flex justify-center items-center py-20"><div class="main-spinner"></div></div>
+                                <div id="dashboard-grid" class="hidden grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div class="lg:col-span-2 space-y-6">
+                                        <div id="dashboard-analytics" class="grid grid-cols-1 sm:grid-cols-3 gap-6"></div>
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="weekly-activity-chart"></canvas></div>
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);">
+                                            <h3 class="font-bold text-lg mb-4">Atividades Recentes</h3>
+                                            <div id="recent-activity-feed" class="space-y-4"></div>
+                                        </div>
+                                    </div>
+                                    <div class="lg:col-span-1 space-y-6">
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="patient-status-chart"></canvas></div>
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);">
+                                            <h3 class="font-bold text-lg mb-4">Pacientes em Foco</h3>
+                                            <div id="attention-patients-list" class="space-y-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Patients List Page -->
+                        <div id="patients-list-content" class="page-content">
+                             <div class="p-4 sm:p-8">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+                                    <h2 class="text-3xl font-bold">Os Meus Pacientes</h2>
+                                    <button id="add-patient-btn" class="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>Adicionar Paciente</button>
+                                </div>
+                                <div id="patient-list-container" class="card p-2 sm:p-4 rounded-xl shadow-md border" style="border-color: var(--border);"></div>
+                             </div>
+                        </div>
+                        
+                        <!-- Patient Detail/Analytics Page -->
+                        <div id="patient-detail-content" class="page-content">
+                            <div class="p-4 sm:p-8">
+                               <div id="patient-header-container"></div>
+                               <div id="patient-analytics-dashboard" class="mt-6"></div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="form-modal" class="modal fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center p-4">
+        <div id="form-modal-content" class="card rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"></div>
+    </div>
+    
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center p-4">
+         <div class="card rounded-xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <svg class="mx-auto h-12 w-12 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+            <h3 class="text-xl font-bold mt-4" id="confirm-title"></h3>
+            <p class="text-sm mt-2" id="confirm-text" style="color: var(--text-secondary);"></p>
+            <div class="mt-6 flex justify-center gap-3">
+                <button id="confirm-cancel-btn" class="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-6 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold">Cancelar</button>
+                <button id="confirm-ok-btn" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-5 right-5 bg-slate-900 text-white py-3 px-6 rounded-lg shadow-lg transform translate-x-[120%] transition-transform duration-500 ease-in-out z-[1000]">
+        <p id="toast-message"></p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, addDoc, getDocs, query, where, orderBy, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTDgwIWpksq1Mq0ishsip-GjeCg-HfciU",
+            authDomain: "vitalis-2f59e.firebaseapp.com",
+            projectId: "vitalis-2f59e",
+            storageBucket: "vitalis-2f59e.appspot.com",
+            messagingSenderId: "937321386983",
+            appId: "1:937321386983:web:07dfefe800ee3e2b02e342",
+            measurementId: "G-51WZBK52BC"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        const appState = { user: null, patients: [], records: new Map(), currentPatientId: null, charts: {}, clockInterval: null };
+
+        const dom = {
+            html: document.documentElement,
+            body: document.body,
+            views: document.querySelectorAll('.view'),
+            globalLoader: document.getElementById('global-loader'),
+            toast: { element: document.getElementById('toast'), message: document.getElementById('toast-message')},
+            auth: {
+                loginForm: document.getElementById('login-form'), registerForm: document.getElementById('register-form'),
+                googleLoginBtn: document.getElementById('google-login-btn'), goToRegister: document.getElementById('go-to-register'),
+                goToLogin: document.getElementById('go-to-login'),
+            },
+            main: {
+                sidebar: document.getElementById('sidebar'), menuBtn: document.getElementById('menu-btn'), closeSidebarBtn: document.getElementById('close-sidebar-btn'),
+                sidebarOverlay: document.getElementById('sidebar-overlay'),
+                greeting: document.getElementById('user-greeting'), logoutBtn: document.getElementById('logout-btn'), navLinks: document.querySelectorAll('.nav-link'),
+                themeToggles: [document.getElementById('theme-toggle-desktop'), document.getElementById('theme-toggle-mobile')]
+            },
+            dashboard: {
+                grid: document.getElementById('dashboard-grid'), loader: document.getElementById('dashboard-loader'), date: document.getElementById('dashboard-date'),
+                clock: document.getElementById('dashboard-clock'), analytics: document.getElementById('dashboard-analytics'),
+                activityFeed: document.getElementById('recent-activity-feed'), attentionList: document.getElementById('attention-patients-list'),
+            },
+            patients: { container: document.getElementById('patient-list-container'), addBtn: document.getElementById('add-patient-btn') },
+            patientDetail: { header: document.getElementById('patient-header-container'), dashboard: document.getElementById('patient-analytics-dashboard') },
+            modals: {
+                form: document.getElementById('form-modal'), formContent: document.getElementById('form-modal-content'), confirm: document.getElementById('confirm-modal'),
+                confirmTitle: document.getElementById('confirm-title'), confirmText: document.getElementById('confirm-text'),
+                confirmOkBtn: document.getElementById('confirm-ok-btn'), confirmCancelBtn: document.getElementById('confirm-cancel-btn'),
+            }
+        };
+
+        const clinicalUtils = {
+            getStabilityStatus(record) {
+                if (!record) return { text: "Dados insuficientes", colorClass: "text-slate-500", bgColorClass: "bg-slate-100 dark:bg-slate-700", level: 0, reason: null };
+                
+                let score = 0;
+                let reasons = [];
+                
+                if (record.saturacao && record.saturacao < 94) { score++; reasons.push("SpO₂ Baixa"); }
+                if (record.batimentos) {
+                    if (record.batimentos < 50) { score++; reasons.push("Bradicardia"); }
+                    if (record.batimentos > 120) { score++; reasons.push("Taquicardia"); }
+                }
+                if (record.pressao) {
+                    const parts = record.pressao.split('/');
+                    if (parts.length === 2) {
+                        const [systolic, diastolic] = parts.map(Number);
+                        if (!isNaN(systolic) && !isNaN(diastolic)) {
+                            if (systolic > 140 || diastolic > 90) { score++; reasons.push("Hipertensão"); }
+                            if (systolic < 90) { score++; reasons.push("Hipotensão"); }
+                        }
+                    }
+                }
+
+                if (score >= 2) return { text: "Alerta Crítico", colorClass: "text-red-800 dark:text-red-200", bgColorClass: "bg-red-100 dark:bg-red-900/50", level: 2, reason: reasons.join(', ') };
+                if (score === 1) return { text: "Requer Atenção", colorClass: "text-amber-800 dark:text-amber-200", bgColorClass: "bg-amber-100 dark:bg-amber-900/50", level: 1, reason: reasons.join(', ') };
+                return { text: "Estável", colorClass: "text-green-800 dark:text-green-200", bgColorClass: "bg-green-100 dark:bg-green-900/50", level: 0, reason: null };
+            },
+            getTrend(data, key) {
+                if (!data || data.length < 2 || data[0][key] == null || data[1][key] == null) return { icon: '<span>-</span>', colorClass: 'text-slate-500' };
+                const last = data[0][key];
+                const prev = data[1][key];
+                if (last > prev) return { icon: '▲', colorClass: 'text-red-500' };
+                if (last < prev) return { icon: '▼', colorClass: 'text-green-500' };
+                return { icon: '●', colorClass: 'text-sky-500' };
+            },
+            calculateAverages(records) {
+                const sums = { batimentos: 0, saturacao: 0, count: 0 };
+                if(records) {
+                    records.forEach(r => {
+                        if (r.batimentos != null && r.saturacao != null) {
+                            sums.batimentos += r.batimentos;
+                            sums.saturacao += r.saturacao;
+                            sums.count++;
+                        }
+                    });
+                }
+                return sums.count > 0 ? {
+                    batimentos: (sums.batimentos / sums.count).toFixed(0),
+                    saturacao: (sums.saturacao / sums.count).toFixed(1)
+                } : { batimentos: 'N/A', saturacao: 'N/A' };
+            }
+        };
+
+        const ui = {
+            showView: (viewId) => dom.views.forEach(v => v.classList.toggle('active', v.id === viewId)),
+            showPage(pageId) {
+                document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                dom.main.navLinks.forEach(l => l.classList.toggle('active', l.dataset.page === pageId));
+            },
+            setLoading(btn, isLoading) {
+                const text = btn.querySelector('.btn-text');
+                const spinner = btn.querySelector('.spinner');
+                btn.disabled = isLoading;
+                if(text) text.style.display = isLoading ? 'none' : 'block';
+                if(spinner) spinner.style.display = isLoading ? 'block' : 'none';
+            },
+            showToast(message, isError = false) {
+                dom.toast.message.textContent = message;
+                dom.toast.element.className = 'fixed top-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transform transition-transform duration-500 ease-in-out z-[1000]';
+                dom.toast.element.classList.add(isError ? 'bg-red-600' : 'bg-slate-900');
+                dom.toast.element.classList.remove('translate-x-[120%]');
+                setTimeout(() => dom.toast.element.classList.add('translate-x-[120%]'), 3000);
+            },
+            showModal: (modalId) => dom.modals[modalId].classList.add('flex'),
+            hideModal: (modalId) => dom.modals[modalId].classList.remove('flex'),
+            
+            renderMainDashboard() {
+                dom.dashboard.loader.style.display = 'none';
+                dom.dashboard.grid.style.display = 'grid';
+
+                const totalPatients = appState.patients.length;
+                let attentionCount = 0;
+                let criticalCount = 0;
+                let stableCount = 0;
+                const attentionPatients = [];
+                let allRecords = [];
+
+                appState.patients.forEach(p => {
+                    const records = appState.records.get(p.id) || [];
+                    if (records.length > 0) {
+                        const lastRecord = records[0];
+                        allRecords.push({ ...lastRecord, patientName: p.name, patientId: p.id });
+                        const status = clinicalUtils.getStabilityStatus(lastRecord);
+                        if (status.level === 1) { attentionCount++; attentionPatients.push({ patient: p, record: lastRecord, status }); }
+                        else if (status.level === 2) { criticalCount++; attentionPatients.push({ patient: p, record: lastRecord, status }); }
+                        else { stableCount++; }
+                    } else {
+                        stableCount++; 
+                    }
+                });
+
+                dom.dashboard.analytics.innerHTML = `
+                    ${this.createAnalyticsCardHTML('Pacientes Totais', totalPatients, 'bg-sky-600')}
+                    ${this.createAnalyticsCardHTML('Requerem Atenção', attentionCount, 'bg-amber-500')}
+                    ${this.createAnalyticsCardHTML('Alertas Críticos', criticalCount, 'bg-red-600')}
+                `;
+
+                if (attentionPatients.length > 0) {
+                    attentionPatients.sort((a,b) => b.status.level - a.status.level);
+                    dom.dashboard.attentionList.innerHTML = attentionPatients.map(item => this.createAttentionPatientHTML(item.patient, item.status)).join('');
+                } else {
+                    dom.dashboard.attentionList.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--text-secondary);">Nenhum paciente em foco no momento.</p>`;
+                }
+
+                if (allRecords.length > 0) {
+                    allRecords.sort((a,b) => b.date.toMillis() - a.date.toMillis());
+                    dom.dashboard.activityFeed.innerHTML = allRecords.slice(0, 5).map(record => this.createActivityItemHTML(record)).join('');
+                } else {
+                    dom.dashboard.activityFeed.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--text-secondary);">Nenhuma atividade registada.</p>`;
+                }
+
+                this.renderDashboardCharts({ stable: stableCount, attention: attentionCount, critical: criticalCount }, allRecords);
+            },
+            createAnalyticsCardHTML(title, value, bgColorClass) {
+                return `<div class="p-5 rounded-xl shadow-lg text-white ${bgColorClass}">
+                    <p class="text-sm font-medium text-white/80">${title}</p>
+                    <p class="text-3xl font-bold mt-2">${value}</p>
+                </div>`;
+            },
+            createAttentionPatientHTML(patient, status) {
+                return `
+                    <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-500/10 border border-transparent">
+                        <div class="w-2 h-10 rounded-full ${status.bgColorClass.replace('100', '500').replace('dark:bg-','bg-')} mt-1"></div>
+                        <div>
+                            <p class="font-semibold">${patient.name}</p>
+                            <p class="text-xs font-bold ${status.colorClass}">${status.text} <span class="font-normal" style="color: var(--text-secondary);">(${status.reason})</span></p>
+                        </div>
+                    </div>`;
+            },
+            createActivityItemHTML(record) {
+                return `
+                    <div class="flex gap-4">
+                        <div class="text-right">
+                            <p class="font-semibold text-sm">${utils.formatDateTime(record.date, true)}</p>
+                            <p class="text-xs" style="color: var(--text-secondary);">${utils.formatDate(record.date.toDate(), true)}</p>
+                        </div>
+                        <div class="relative pl-4 flex-1">
+                           <div class="absolute top-1 -left-[5px] w-2.5 h-2.5 bg-sky-500 rounded-full border-2" style="border-color: var(--card);"></div>
+                           <div class="h-full w-px absolute top-2 -left-px" style="background-color: var(--border);"></div>
+                           <p class="text-sm font-medium">${record.patientName}</p>
+                           <p class="text-xs" style="color: var(--text-secondary);">Novo registo de sinais vitais adicionado.</p>
+                        </div>
+                    </div>
+                `;
+            },
+             renderPatientList() {
+                 const container = dom.patients.container;
+                if (appState.patients.length === 0) {
+                    container.innerHTML = `<p class="text-center p-8" style="color: var(--text-secondary);">Nenhum paciente registado.</p>`; return;
+                }
+                container.innerHTML = `
+                    <!-- Vista de Tabela para Desktop -->
+                    <div class="hidden md:block">
+                        <table class="w-full text-left">
+                            <thead class="border-b text-sm" style="border-color: var(--border); color: var(--text-secondary);">
+                                <tr><th class="p-4 font-semibold">Nome</th><th class="p-4 font-semibold">CPF</th><th class="p-4 font-semibold">Idade</th><th class="p-4 font-semibold">Status</th><th class="p-4"></th></tr>
+                            </thead>
+                            <tbody>${appState.patients.map(p => this.createPatientRowHTML(p)).join('')}</tbody>
+                        </table>
+                    </div>
+                    <!-- Vista de Cartões para Mobile -->
+                    <div class="md:hidden space-y-4 p-2">
+                        ${appState.patients.map(p => this.createPatientCardHTML(p)).join('')}
+                    </div>
+                `;
+            },
+            createPatientRowHTML(patient) {
+                const records = appState.records.get(patient.id) || [];
+                const status = clinicalUtils.getStabilityStatus(records[0]);
+                return `
+                    <tr class="border-b" style="border-color: var(--border);">
+                        <td class="p-4 font-semibold">${patient.name}</td>
+                        <td class="p-4" style="color: var(--text-secondary);">${patient.cpf}</td>
+                        <td class="p-4" style="color: var(--text-secondary);">${utils.calculateAge(patient.dob)} anos</td>
+                        <td class="p-4"><span class="px-3 py-1 text-xs font-semibold rounded-full ${status.bgColorClass} ${status.colorClass}">${status.text}</span></td>
+                        <td class="p-4 text-right">
+                            <button class="view-patient-btn bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 py-1 px-3 rounded-md text-sm font-semibold" data-id="${patient.id}">Analisar</button>
+                            <button class="delete-patient-btn text-slate-400 hover:text-red-500 p-2" data-id="${patient.id}" data-name="${patient.name}"><svg class="w-4 h-4 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                        </td>
+                    </tr>`;
+            },
+            createPatientCardHTML(patient) {
+                 const records = appState.records.get(patient.id) || [];
+                const status = clinicalUtils.getStabilityStatus(records[0]);
+                return `
+                    <div class="p-4 rounded-lg border" style="border-color: var(--border);">
+                        <div class="flex justify-between items-start">
+                             <div>
+                                <p class="font-bold text-lg">${patient.name}</p>
+                                <p class="text-sm" style="color: var(--text-secondary);">${utils.calculateAge(patient.dob)} anos</p>
+                             </div>
+                              <span class="px-3 py-1 text-xs font-semibold rounded-full ${status.bgColorClass} ${status.colorClass}">${status.text}</span>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center">
+                            <button class="view-patient-btn bg-sky-600 text-white py-2 px-4 rounded-md text-sm font-semibold flex-grow" data-id="${patient.id}">Analisar Paciente</button>
+                            <button class="delete-patient-btn text-slate-400 hover:text-red-500 p-2 ml-2" data-id="${patient.id}" data-name="${patient.name}"><svg class="w-5 h-5 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                        </div>
+                    </div>
+                `;
+            },
+            renderPatientAnalyticsDashboard() {
+                const patient = appState.patients.find(p => p.id === appState.currentPatientId);
+                const records = appState.records.get(appState.currentPatientId) || [];
+                const lastRecord = records[0] || {};
+                const averages = clinicalUtils.calculateAverages(records);
+
+                dom.patientDetail.header.innerHTML = this.createPatientDetailHeaderHTML(patient);
+                dom.patientDetail.dashboard.innerHTML = this.createPatientAnalyticsHTML(lastRecord, averages, records);
+                this.renderAllCharts(records);
+            },
+            createPatientDetailHeaderHTML(patient) {
+                if (!patient) return '';
+                const age = utils.calculateAge(patient.dob);
+                return `
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                        <div>
+                            <h2 class="text-3xl font-bold">${patient.name}</h2>
+                            <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm mt-2" style="color: var(--text-secondary);">
+                                <span><strong>CPF:</strong> ${patient.cpf}</span>
+                                <span><strong>Nasc:</strong> ${utils.formatDate(patient.dob)} (${age} anos)</span>
+                                <span><strong>Gênero:</strong> ${patient.gender}</span>
+                            </div>
+                        </div>
+                        <button id="export-pdf-btn" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-800 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L14 2.586A2 2 0 0012.586 2H4z" /><path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L14 2.586A2 2 0 0012.586 2H4z" fill-opacity="0.2" /><path d="M8 12a1 1 0 100 2h4a1 1 0 100-2H8z" /></svg>
+                            Exportar PDF
+                        </button>
+                    </div>`;
+            },
+            createPatientAnalyticsHTML(last, avg, records) {
+                const status = clinicalUtils.getStabilityStatus(last);
+                return `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                ${this.createVitalCardHTML('Freq. Cardíaca', last.batimentos, 'bpm', avg.batimentos, clinicalUtils.getTrend(records, 'batimentos'))}
+                                ${this.createVitalCardHTML('Saturação O₂', last.saturacao, '%', avg.saturacao, clinicalUtils.getTrend(records, 'saturacao'))}
+                                ${this.createVitalCardHTML('Pressão Arterial', last.pressao, 'mmHg', 'N/A', {icon:'-', colorClass:'text-slate-500'})}
+                            </div>
+                            <div class="card p-4 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="hrChart"></canvas></div>
+                            <div class="card p-4 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="bpChart"></canvas></div>
+                        </div>
+                        <div class="space-y-6">
+                             <div class="card p-6 rounded-xl shadow-md text-center border" style="border-color: var(--border);">
+                                <p class="text-sm font-medium" style="color: var(--text-secondary);">Status de Estabilidade</p>
+                                <p class="text-2xl font-bold mt-2 ${status.colorClass}">${status.text}</p>
+                                <p class="text-xs mt-1" style="color: var(--text-secondary);">Baseado no último registo</p>
+                            </div>
+                             <div class="card p-6 rounded-xl shadow-md border" style="border-color: var(--border);">
+                                <h3 class="font-bold text-lg mb-4">Últimos Registos</h3>
+                                <div id="mini-records-list" class="space-y-3 max-h-96 overflow-y-auto">
+                                ${records.length > 0 ? records.slice(0,5).map(r => this.createMiniRecordHTML(r)).join('') : `<p class="text-sm" style="color: var(--text-secondary);">Sem registos.</p>`}
+                                </div>
+                                 <button id="add-record-btn" class="bg-sky-600 hover:bg-sky-700 text-white w-full mt-4 py-2 px-4 rounded-lg font-semibold">Novo Registo</button>
+                            </div>
+                            <div class="card p-4 rounded-xl shadow-md text-sm border" style="border-color: var(--border);">
+                                <p class="font-bold">AVISO LEGAL</p>
+                                <p class="mt-1" style="color: var(--text-secondary);">As análises são ferramentas de apoio e não substituem o julgamento clínico profissional.</p>
+                            </div>
+                        </div>
+                    </div>`;
+            },
+            createVitalCardHTML(title, value, unit, avg, trend) {
+                return `
+                    <div class="card p-4 rounded-xl shadow-md border" style="border-color: var(--border);">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm font-medium" style="color: var(--text-secondary);">${title}</p>
+                            <span class="text-lg font-bold ${trend.colorClass}">${trend.icon}</span>
+                        </div>
+                        <p class="text-3xl font-bold mt-2">${value || 'N/A'}</p>
+                        <div class="flex justify-between items-end text-sm mt-1">
+                            <span style="color: var(--text-secondary);">${unit}</span>
+                            <span class="text-slate-400 dark:text-slate-500">Média: ${avg}</span>
+                        </div>
+                    </div>`;
+            },
+            createMiniRecordHTML(record) {
+                return `
+                    <div class="flex justify-between items-center text-sm border-b pb-2" style="border-color: var(--border);">
+                        <div>
+                            <p class="font-semibold">${utils.formatDateTime(record.date)}</p>
+                            <p class="text-xs" style="color: var(--text-secondary);">${record.estadoGeral}</p>
+                        </div>
+                        <button class="delete-record-btn text-slate-400 hover:text-red-500 p-1" data-id="${record.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>`;
+            },
+            renderDashboardCharts(statusData, allRecords) {
+                const isDark = dom.html.classList.contains('dark');
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const textColor = isDark ? '#cbd5e1' : '#64748b';
+
+                const statusCtx = document.getElementById('patient-status-chart')?.getContext('2d');
+                if(statusCtx) {
+                    if (appState.charts.status) appState.charts.status.destroy();
+                    appState.charts.status = new Chart(statusCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Estável', 'Atenção', 'Crítico'],
+                            datasets: [{
+                                data: [statusData.stable, statusData.attention, statusData.critical],
+                                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                                borderColor: isDark ? '#0f172a' : '#ffffff',
+                                borderWidth: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: true,
+                            plugins: { 
+                                title: { display: true, text: 'Distribuição de Status dos Pacientes', color: textColor, font: { size: 16 } },
+                                legend: { position: 'bottom', labels: { color: textColor } }
+                            }
+                        }
+                    });
+                }
+                
+                const activityData = Array(7).fill(0);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const dayLabels = Array(7).fill(0).map((_, i) => {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() - (6 - i));
+                    return d;
+                });
+
+                allRecords.forEach(r => {
+                    const recordDate = r.date.toDate();
+                    recordDate.setHours(0, 0, 0, 0);
+                    const diffDays = Math.floor((today - recordDate) / (1000 * 60 * 60 * 24));
+                    if (diffDays >= 0 && diffDays < 7) {
+                        activityData[6 - diffDays]++;
+                    }
+                });
+
+                const activityCtx = document.getElementById('weekly-activity-chart')?.getContext('2d');
+                if(activityCtx) {
+                    if (appState.charts.activity) appState.charts.activity.destroy();
+                    appState.charts.activity = new Chart(activityCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: dayLabels.map(d => d.toLocaleDateString('pt-BR', {weekday: 'short'})),
+                            datasets: [{
+                                label: 'Registos por Dia',
+                                data: activityData,
+                                backgroundColor: '#0ea5e9',
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                             responsive: true, maintainAspectRatio: true,
+                             scales: {
+                                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, stepSize: 1 } },
+                                x: { grid: { display: false }, ticks: { color: textColor } }
+                             },
+                             plugins: { 
+                                title: { display: true, text: 'Atividade da Última Semana', color: textColor, font: { size: 16 } },
+                                legend: { display: false }
+                            }
+                        }
+                    })
+                }
+            },
+            renderAllCharts(records) {
+                if(!records || records.length === 0) {
+                     ['hrChart', 'bpChart'].forEach(id => {
+                        if (appState.charts[id]) appState.charts[id].destroy();
+                        const canvas = document.getElementById(id);
+                        if(canvas) {
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0,0,canvas.width,canvas.height);
+                            ctx.font = "16px Inter";
+                            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary');
+                            ctx.textAlign = "center";
+                            ctx.fillText("Sem dados suficientes para o gráfico.", canvas.width / 2, canvas.height / 2);
+                        }
+                    });
+                    return;
+                };
+
+                const isDark = dom.html.classList.contains('dark');
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const textColor = isDark ? '#cbd5e1' : '#64748b';
+
+                const reversedRecords = [...records].reverse();
+                
+                this.renderLineChart('hrChart', 'Frequência Cardíaca (bpm)', reversedRecords.map(r => r.date.toDate()), reversedRecords.map(r => r.batimentos), '#ef4444', 'rgba(239, 68, 68, 0.1)', gridColor, textColor);
+
+                const bpData = reversedRecords.map(r => {
+                    if (!r.pressao || !r.pressao.includes('/')) return { s: null, d: null };
+                    const [s, d] = r.pressao.split('/').map(Number);
+                    return { s, d };
+                });
+                
+                if (appState.charts['bpChart']) appState.charts['bpChart'].destroy();
+                const bpCtx = document.getElementById('bpChart')?.getContext('2d');
+                if(bpCtx) {
+                    appState.charts['bpChart'] = new Chart(bpCtx, {
+                        type: 'line',
+                        data: {
+                            labels: reversedRecords.map(r => r.date.toDate()),
+                            datasets: [
+                                { label: 'Sistólica (mmHg)', data: bpData.map(p => p.s), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.3 },
+                                { label: 'Diastólica (mmHg)', data: bpData.map(p => p.d), borderColor: '#16a34a', backgroundColor: 'rgba(22, 163, 74, 0.1)', fill: true, tension: 0.3 }
+                            ]
+                        },
+                        options: { 
+                            responsive: true, maintainAspectRatio: true, 
+                            scales: {
+                                x: { type: 'time', time: { unit: 'day' }, grid: {color: gridColor}, ticks: {color: textColor}},
+                                y: { beginAtZero: false, grid: {color: gridColor}, ticks: {color: textColor} }
+                            },
+                            plugins: { title: { display: true, text: 'Pressão Arterial (mmHg)', color: textColor}, legend: {labels: {color: textColor}} }
+                        }
+                    });
+                }
+            },
+            renderLineChart(canvasId, label, labels, data, borderColor, bgColor, gridColor, textColor) {
+                if (appState.charts[canvasId]) appState.charts[canvasId].destroy();
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                 if(ctx) {
+                    appState.charts[canvasId] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: label, data: data, borderColor: borderColor, backgroundColor: bgColor,
+                                fill: true, tension: 0.3, borderWidth: 2, pointBackgroundColor: borderColor, pointRadius: 3, pointHoverRadius: 5,
+                            }]
+                        },
+                        options: { 
+                            responsive: true, maintainAspectRatio: true, 
+                            scales: { 
+                                x: { type: 'time', time: { unit: 'day' }, grid: {color: gridColor}, ticks: {color: textColor}},
+                                y: { beginAtZero: false, grid: {color: gridColor}, ticks: {color: textColor} }
+                            }, 
+                            plugins: { legend: { display: false }, title: {display: true, text: label, color: textColor} } }
+                    });
+                }
+            },
+            getPatientFormHTML(patient = {}) {
+                return `
+                    <form id="patient-form" class="p-6 sm:p-8 space-y-4" data-id="${patient.id || ''}">
+                        <h2 class="text-2xl font-bold mb-4">${patient.id ? 'Editar Paciente' : 'Novo Paciente'}</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Nome Completo</label><input type="text" name="patient-name" required class="form-input" value="${patient.name || ''}"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">CPF</label><input type="text" name="patient-cpf" required class="form-input" value="${patient.cpf || ''}"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Data de Nascimento</label><input type="date" name="patient-dob" required class="form-input" value="${patient.dob || ''}"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Gênero</label><select name="patient-gender" required class="form-input"><option ${patient.gender === 'Masculino' ? 'selected' : ''}>Masculino</option><option ${patient.gender === 'Feminino' ? 'selected' : ''}>Feminino</option><option ${patient.gender === 'Outro' ? 'selected' : ''}>Outro</option></select></div>
+                            <div class="md:col-span-2"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Diagnóstico (Opcional)</label><input type="text" name="patient-diagnosis" class="form-input" value="${patient.diagnosis || ''}"></div>
+                        </div>
+                        <div class="mt-6 flex justify-end gap-3"><button type="button" class="btn-cancel bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600 py-2 px-4 rounded-lg font-semibold">Cancelar</button><button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white py-2 px-4 rounded-lg font-semibold">Salvar</button></div>
+                    </form>`;
+            },
+            getRecordFormHTML() {
+                return `
+                    <form id="record-form" class="p-6 sm:p-8 space-y-4">
+                        <h2 class="text-2xl font-bold mb-4">Novo Registo de Sinais Vitais</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div class="col-span-2 md:col-span-3"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Estado Geral</label><select name="record-estado" required class="form-input"><option>Lúcido</option><option>Sonolento</option><option>Confuso</option><option>Inconsciente</option></select></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">SpO₂ (%)</label><input type="number" name="record-saturacao" placeholder="98" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">BPM</label><input type="number" name="record-batimentos" placeholder="75" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">RPM</label><input type="number" name="record-respiracao" placeholder="16" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Temp (°C)</label><input type="text" name="record-temperatura" placeholder="36.5" class="form-input"></div>
+                            <div class="col-span-2"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Pressão Arterial</hlabel><input type="text" name="record-pressao" placeholder="120/80" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Glicemia</label><input type="number" name="record-glicemia" placeholder="99" class="form-input"></div>
+                            <div class="col-span-2 md:col-span-3"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Anotações (Opcional)</label><textarea name="record-notas" rows="3" class="form-input"></textarea></div>
+                        </div>
+                        <div class="mt-6 flex justify-end gap-3"><button type="button" class="btn-cancel bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600 py-2 px-4 rounded-lg font-semibold">Cancelar</button><button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-semibold">Salvar</button></div>
+                    </form>`;
+            }
+        };
+
+        const api = {
+            async handleUserRegistration(user, name) {
+                const userRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userRef);
+                if (!userDoc.exists()) {
+                    await setDoc(userRef, { name: name || user.displayName, email: user.email, createdAt: serverTimestamp() });
+                }
+                const finalDoc = await getDoc(userRef);
+                return finalDoc.data();
+            },
+            async fetchAllInitialData() {
+                const qPatients = query(collection(db, "patients"), where("userId", "==", appState.user.uid));
+                const patientsSnapshot = await getDocs(qPatients);
+                const patientsList = patientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                appState.patients = patientsList.sort((a, b) => a.name.localeCompare(b.name));
+                const recordPromises = appState.patients.map(p => {
+                    const qRecords = query(collection(db, `patients/${p.id}/records`), orderBy("date", "desc"));
+                    return getDocs(qRecords);
+                });
+                const recordsSnapshots = await Promise.all(recordPromises);
+                appState.records.clear();
+                recordsSnapshots.forEach((snapshot, index) => {
+                    const patientId = appState.patients[index].id;
+                    appState.records.set(patientId, snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+            },
+            async addOrUpdatePatient(data, id) {
+                 if (id) { await setDoc(doc(db, "patients", id), { ...data, userId: appState.user.uid }, { merge: true }); return { id }; } 
+                 else { return await addDoc(collection(db, "patients"), { ...data, userId: appState.user.uid }); }
+            },
+            deletePatient: async (id) => await deleteDoc(doc(db, "patients", id)),
+            addRecord: async (patientId, data) => await addDoc(collection(db, `patients/${patientId}/records`), { ...data, date: serverTimestamp() }),
+            deleteRecord: async (patientId, recordId) => await deleteDoc(doc(db, `patients/${patientId}/records`, recordId)),
+        };
+
+        const utils = {
+            formatDate: (d, short = false) => {
+                if(!d) return 'N/A';
+                const date = (d instanceof Date) ? d : new Date(d + 'T00:00:00');
+                if (short) return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                return date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            },
+            formatDateTime: (ts, short = false) => {
+                if(!ts || !ts.toDate) return 'N/A';
+                const date = ts.toDate();
+                if(short) return date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            },
+            calculateAge: (dob) => {
+                if (!dob) return '';
+                const diff = Date.now() - new Date(dob).getTime();
+                const age = new Date(diff).getUTCFullYear() - 1970;
+                return age > 0 ? age : '< 1';
+            },
+            mapAuthError: (code) => ({'auth/wrong-password': 'Senha incorreta.','auth/user-not-found': 'Utilizador não encontrado.','auth/email-already-in-use': 'Este email já está em utilização.'}[code] || 'Ocorreu um erro.')
+        };
+        
+        async function handleLogin(method, credentials = {}) {
+            let btn = dom.auth.loginForm.querySelector('button[type="submit"]');
+            if (method === 'google') btn = dom.auth.googleLoginBtn;
+            ui.setLoading(btn, true);
+            try {
+                if (method === 'google') await signInWithPopup(auth, googleProvider);
+                else await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+            } catch (error) { ui.showToast(utils.mapAuthError(error.code), true); } 
+            finally { ui.setLoading(btn, false); }
+        }
+        function handleLogout() {
+            signOut(auth);
+            if(appState.clockInterval) clearInterval(appState.clockInterval);
+        }
+        function openConfirmationModal(title, text, onConfirm) {
+            dom.modals.confirmTitle.textContent = title;
+            dom.modals.confirmText.textContent = text;
+            ui.showModal('confirm');
+            dom.modals.confirmOkBtn.onclick = () => { onConfirm(); ui.hideModal('confirm'); };
+        }
+        async function refreshAllData() {
+            dom.dashboard.loader.style.display = 'flex';
+            dom.dashboard.grid.style.display = 'none';
+            await api.fetchAllInitialData();
+            ui.renderMainDashboard();
+            ui.renderPatientList();
+            if (appState.currentPatientId) {
+                ui.renderPatientAnalyticsDashboard();
+            }
+        }
+        function generatePDF() {
+            if (!appState.currentPatientId) return;
+            ui.showToast("A gerar PDF...");
+            const patient = appState.patients.find(p => p.id === appState.currentPatientId);
+            const records = appState.records.get(appState.currentPatientId);
+            const { jsPDF } = window.jspdf; const docPDF = new jsPDF();
+            docPDF.setFontSize(20).text("Relatório de Sinais Vitais", 105, 20, { align: 'center' });
+            docPDF.setFontSize(12);
+            docPDF.text(`Paciente: ${patient.name}`, 14, 40); docPDF.text(`CPF: ${patient.cpf}`, 14, 47);
+            docPDF.text(`Nascimento: ${utils.formatDate(patient.dob)}`, 14, 54);
+            const tableColumn = ["Data/Hora", "Estado", "SpO₂ (%)", "BPM", "RPM", "Temp (°C)", "PA (mmHg)", "Glicemia"];
+            const tableRows = records.map(r => [
+                utils.formatDateTime(r.date), r.estadoGeral||'-', r.saturacao||'-', r.batimentos||'-', r.respiracao||'-', r.temperatura||'-', r.pressao||'-', r.glicemia||'-'
+            ]);
+            docPDF.autoTable({ head: [tableColumn], body: tableRows, startY: 65 });
+            const finalY = docPDF.lastAutoTable.finalY || 100;
+            docPDF.setFontSize(10).text("______________________________________", 14, finalY + 20);
+            docPDF.text("Assinatura do Profissional Responsável", 14, finalY + 25);
+            docPDF.save(`relatorio_${patient.name.replace(/\s/g, '_')}.pdf`);
+        }
+        
+        function initTheme() {
+            const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+
+            const updateIcons = (isDark) => dom.main.themeToggles.forEach(btn => btn.innerHTML = isDark ? sunIcon : moonIcon);
+
+            const setTheme = (isDark) => {
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                dom.html.classList.toggle('dark', isDark);
+                updateIcons(isDark);
+
+                const newTextColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+                const newGridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+
+                Object.values(appState.charts).forEach(chart => {
+                    if(chart.options.scales){
+                       Object.values(chart.options.scales).forEach(axis => {
+                           if(axis.grid) axis.grid.color = newGridColor;
+                           if(axis.ticks) axis.ticks.color = newTextColor;
+                       });
+                    }
+                    if(chart.options.plugins.legend) chart.options.plugins.legend.labels.color = newTextColor;
+                    if(chart.options.plugins.title) chart.options.plugins.title.color = newTextColor;
+                    chart.update();
+                });
+            };
+
+            dom.main.themeToggles.forEach(btn => btn.addEventListener('click', () => {
+                setTheme(!dom.html.classList.contains('dark'));
+            }));
+
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(savedTheme === 'dark' || (!savedTheme && prefersDark));
+        }
+
+        function init() {
+            initTheme();
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (appState.clockInterval) clearInterval(appState.clockInterval);
+                dom.globalLoader.style.display = 'none';
+                if (user) {
+                    const userData = await api.handleUserRegistration(user);
+                    appState.user = { uid: user.uid, email: user.email, name: userData.name };
+                    dom.main.greeting.textContent = `Olá, ${appState.user.name.split(' ')[0]}`;
+                    ui.showView('main-app-view'); ui.showPage('dashboard-content');
+                    const updateClock = () => {
+                         const now = new Date();
+                         dom.dashboard.date.textContent = utils.formatDate(now);
+                         dom.dashboard.clock.textContent = now.toLocaleTimeString('pt-BR');
+                    };
+                    updateClock(); appState.clockInterval = setInterval(updateClock, 1000);
+                    await refreshAllData();
+                } else {
+                    appState.user = null; appState.patients = []; appState.records.clear();
+                    ui.showView('auth-view');
+                }
+            });
+
+            dom.auth.goToRegister.addEventListener('click', e => { e.preventDefault(); ui.showView('register-view'); });
+            dom.auth.goToLogin.addEventListener('click', e => { e.preventDefault(); ui.showView('auth-view'); });
+            dom.auth.loginForm.addEventListener('submit', e => { e.preventDefault(); handleLogin('email', { email: e.target.elements['login-email'].value, password: e.target.elements['login-password'].value }); });
+            dom.auth.registerForm.addEventListener('submit', async e => {
+                e.preventDefault(); const btn = e.submitter; ui.setLoading(btn, true);
+                try {
+                    const { user } = await createUserWithEmailAndPassword(auth, e.target.elements['register-email'].value, e.target.elements['register-password'].value);
+                    await api.handleUserRegistration(user, e.target.elements['register-name'].value);
+                } catch(err) { ui.showToast(utils.mapAuthError(err.code), true); }
+                finally { ui.setLoading(btn, false); }
+            });
+            dom.auth.googleLoginBtn.addEventListener('click', () => handleLogin('google'));
+            dom.main.logoutBtn.addEventListener('click', handleLogout);
+
+            const closeSidebar = () => {
+                dom.main.sidebar.classList.remove('open');
+                dom.main.sidebarOverlay.classList.add('hidden');
+                dom.main.sidebarOverlay.classList.remove('opacity-100');
+            };
+            const openSidebar = () => {
+                dom.main.sidebar.classList.add('open');
+                dom.main.sidebarOverlay.classList.remove('hidden');
+                setTimeout(() => dom.main.sidebarOverlay.classList.add('opacity-100'), 10);
+            };
+
+            dom.main.menuBtn.addEventListener('click', openSidebar);
+            dom.main.closeSidebarBtn.addEventListener('click', closeSidebar);
+            dom.main.sidebarOverlay.addEventListener('click', closeSidebar);
+
+            dom.main.navLinks.forEach(link => link.addEventListener('click', e => { 
+                e.preventDefault(); 
+                ui.showPage(link.dataset.page); 
+                closeSidebar();
+            }));
+
+            dom.patients.addBtn.addEventListener('click', () => { dom.modals.formContent.innerHTML = ui.getPatientFormHTML(); ui.showModal('form'); });
+            dom.patients.container.addEventListener('click', e => {
+                const viewBtn = e.target.closest('.view-patient-btn');
+                const deleteBtn = e.target.closest('.delete-patient-btn');
+                if (viewBtn) {
+                    appState.currentPatientId = viewBtn.dataset.id;
+                    ui.renderPatientAnalyticsDashboard();
+                    ui.showPage('patient-detail-content');
+                } else if (deleteBtn) {
+                    openConfirmationModal(`Excluir ${deleteBtn.dataset.name}?`, "Todos os registos associados serão perdidos.", async () => {
+                        try { await api.deletePatient(deleteBtn.dataset.id); await refreshAllData(); ui.showToast("Paciente excluído."); }
+                        catch(err) { ui.showToast("Erro ao excluir.", true); }
+                    });
+                }
+            });
+
+            document.body.addEventListener('click', e => {
+                if (e.target.id === 'add-record-btn') { dom.modals.formContent.innerHTML = ui.getRecordFormHTML(); ui.showModal('form'); }
+                if (e.target.id === 'export-pdf-btn') { generatePDF(); }
+                const deleteBtn = e.target.closest('.delete-record-btn');
+                if (deleteBtn) {
+                    openConfirmationModal("Excluir registo?", "Esta ação é permanente.", async () => {
+                        try { await api.deleteRecord(appState.currentPatientId, deleteBtn.dataset.id); await refreshAllData(); ui.showToast("Registo excluído."); }
+                        catch(err) { ui.showToast("Erro ao excluir.", true); }
+                    });
+                }
+            });
+
+             dom.modals.form.addEventListener('click', async e => {
+                if (e.target === dom.modals.form || e.target.classList.contains('btn-cancel')) { ui.hideModal('form'); return; }
+                const form = e.target.closest('form');
+                if (!form || e.target.tagName !== 'BUTTON' || e.target.type !== 'submit') return;
+                
+                e.preventDefault();
+                const btn = form.querySelector('button[type="submit"]');
+                ui.setLoading(btn, true);
+                
+                try {
+                    const formData = new FormData(form);
+                    if (form.id === 'patient-form') {
+                        const data = { name: formData.get('patient-name'), cpf: formData.get('patient-cpf'), dob: formData.get('patient-dob'), gender: formData.get('patient-gender'), diagnosis: formData.get('patient-diagnosis') };
+                        await api.addOrUpdatePatient(data, form.dataset.id);
+                        ui.showToast("Paciente salvo!");
+                    } else if (form.id === 'record-form') {
+                        const data = {
+                            estadoGeral: formData.get('record-estado'),
+                            saturacao: Number(formData.get('record-saturacao')) || null,
+                            batimentos: Number(formData.get('record-batimentos')) || null,
+                            respiracao: Number(formData.get('record-respiracao')) || null,
+                            temperatura: parseFloat(String(formData.get('record-temperatura')).replace(',', '.')) || null,
+                            pressao: formData.get('record-pressao') || null,
+                            glicemia: Number(formData.get('record-glicemia')) || null,
+                            notas: formData.get('record-notas') || null,
+                        };
+                        await api.addRecord(appState.currentPatientId, data);
+                        ui.showToast("Registo salvo!");
+                    }
+                    ui.hideModal('form');
+                    await refreshAllData();
+                } catch(err) { console.error(err); ui.showToast("Erro ao salvar.", true); }
+                finally { ui.setLoading(btn, false); }
+            });
+            dom.modals.confirmCancelBtn.addEventListener('click', () => ui.hideModal('confirm'));
+        }
+
+        init();
+    </script>
+</body>
+</html>
+", replace the entire contents of the document with my response.Claro, refiz o design da aplicação. Aqui está a versão corrigida.
+
+
+```html
+<!DOCTYPE html>
+<html lang="pt-BR" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vitalis 5.0 - Análise Clínica Inteligente</title>
+    
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <link rel="preconnect" href="[https://fonts.googleapis.com](https://fonts.googleapis.com)">
+    <link rel="preconnect" href="[https://fonts.gstatic.com](https://fonts.gstatic.com)" crossorigin>
+    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)" rel="stylesheet">
+    
+    <!-- Chart.js para visualização de dados -->
+    <script src="[https://cdn.jsdelivr.net/npm/chart.js](https://cdn.jsdelivr.net/npm/chart.js)"></script>
+    <script src="[https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js](https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js)"></script>
+
+    
+    <script src="[https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js](https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js)"></script>
+    <script src="[https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js](https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js)"></script>
+
+    <style>
+        /* Definição de variáveis de cor para os temas claro e escuro */
+        :root {
+            --background: #f1f5f9; /* slate-100 */
+            --foreground: #0f172a; /* slate-900 */
+            --card: #ffffff; /* white */
+            --border: #e2e8f0; /* slate-200 */
+            --text-primary: #1e293b; /* slate-800 */
+            --text-secondary: #64748b; /* slate-500 */
+            --primary: #0ea5e9; /* sky-500 */
+            --ring: #38bdf8; /* sky-400 */
+        }
+
+        .dark {
+            --background: #020617; /* slate-950 */
+            --foreground: #f8fafc; /* slate-50 */
+            --card: #0f172a; /* slate-900 */
+            --border: #1e293b; /* slate-800 */
+            --text-primary: #f1f5f9; /* slate-100 */
+            --text-secondary: #94a3b8; /* slate-400 */
+            --primary: #38bdf8; /* sky-400 */
+            --ring: #0ea5e9; /* sky-500 */
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--background);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .view, .page-content, .modal { display: none; }
+        .view.active, .page-content.active, .modal.flex { display: block; }
+        .modal.flex { display: flex; }
+        
+        .card { background-color: var(--card); color: var(--text-primary); }
+        .form-input { 
+            margin-top: 0.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--border); 
+            padding: 0.6rem 0.75rem; transition: box-shadow 0.2s, background-color 0.3s, border-color 0.3s;
+            background-color: var(--background);
+            color: var(--text-primary);
+        }
+        .form-input:focus { outline: 2px solid transparent; outline-offset: 2px; box-shadow: 0 0 0 2px var(--ring); }
+        
+        #sidebar { transition: transform 0.3s ease-in-out; }
+        #sidebar-overlay { transition: opacity 0.3s ease-in-out; }
+
+        @media (max-width: 1023px) {
+            #sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                height: 100%;
+                z-index: 50;
+            }
+            #sidebar.open { transform: translateX(0); }
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3); width: 24px; height: 24px;
+            border-radius: 50%; border-left-color: #ffffff;
+            animation: spin 1s ease infinite;
+        }
+        .main-spinner {
+            border: 4px solid var(--border); width: 36px; height: 36px;
+            border-radius: 50%; border-left-color: var(--primary);
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Estilos para links de navegação na sidebar */
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; /* 12px */
+            padding: 0.75rem; /* 12px */
+            border-radius: 0.5rem; /* 8px */
+            font-weight: 500;
+            color: #cbd5e1; /* slate-300 */
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .nav-link:hover {
+            background-color: #1e293b; /* slate-800 */
+            color: #ffffff;
+        }
+        .nav-link.active {
+            background-color: #0ea5e9; /* sky-500 */
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+
+        <div id="global-loader" class="fixed inset-0 z-[999] flex items-center justify-center" style="background-color: rgba(255,255,255,0.5); backdrop-filter: blur(4px);">
+            <div class="main-spinner"></div>
+        </div>
+
+        <div id="auth-view" class="view">
+             <div class="flex min-h-screen items-center justify-center p-4" style="background-color: var(--background);">
+                <div class="w-full max-w-md">
+                    <div class="text-center mb-8">
+                        <svg class="mx-auto h-12 w-auto text-sky-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>
+                        <h1 class="text-3xl font-bold mt-2" style="color: var(--text-primary);">Vitalis</h1>
+                        <p style="color: var(--text-secondary);">A sua plataforma de análise clínica.</p>
+                    </div>
+                    <div class="card p-8 rounded-2xl shadow-xl border" style="border-color: var(--border);">
+                        <form id="login-form">
+                           <h2 class="text-2xl font-semibold mb-6 text-center">Login</h2>
+                            <div class="space-y-4">
+                                <button type="button" id="google-login-btn" class="w-full flex justify-center items-center gap-3 border py-2.5 px-4 rounded-lg hover:bg-slate-500/10 transition-colors font-semibold" style="border-color: var(--border);">
+                                    <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C39.712,34.437,44,28.3,44,20C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                                    Entrar com o Google
+                                </button>
+                                <div class="flex items-center text-sm"><div class="flex-grow border-t" style="border-color: var(--border);"></div><span class="flex-shrink mx-4" style="color: var(--text-secondary);">ou</span><div class="flex-grow border-t" style="border-color: var(--border);"></div></div>
+                                <div><label for="login-email" class="block text-sm font-medium" style="color: var(--text-secondary);">Email</label><input type="email" id="login-email" name="login-email" required class="form-input"></div>
+                                <div><label for="login-password" class="block text-sm font-medium" style="color: var(--text-secondary);">Senha</label><input type="password" id="login-password" name="login-password" required class="form-input"></div>
+                                <button type="submit" class="w-full bg-sky-600 text-white py-2.5 px-4 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors font-semibold flex justify-center items-center"><span class="btn-text">Login</span><div class="spinner hidden"></div></button>
+                            </div>
+                        </form>
+                    </div>
+                    <p class="mt-6 text-center text-sm">Não tem uma conta? <a href="#" id="go-to-register" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">Registe-se</a></p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="register-view" class="view">
+             <div class="flex min-h-screen items-center justify-center p-4" style="background-color: var(--background);">
+                <div class="w-full max-w-md">
+                     <div class="text-center mb-8"><h1 class="text-3xl font-bold">Criar a sua Conta Vitalis</h1></div>
+                    <div class="card p-8 rounded-2xl shadow-xl border" style="border-color: var(--border);">
+                        <form id="register-form">
+                             <div class="space-y-4">
+                                <div><label for="register-name" class="block text-sm font-medium" style="color: var(--text-secondary);">Nome Completo</label><input type="text" id="register-name" name="register-name" required class="form-input"></div>
+                                <div><label for="register-email" class="block text-sm font-medium" style="color: var(--text-secondary);">Email</label><input type="email" id="register-email" name="register-email" required class="form-input"></div>
+                                <div><label for="register-password" class="block text-sm font-medium" style="color: var(--text-secondary);">Senha</label><input type="password" id="register-password" name="register-password" required class="form-input"></div>
+                                <button type="submit" class="w-full bg-emerald-600 text-white py-2.5 px-4 rounded-lg hover:bg-emerald-700 font-semibold flex justify-center items-center"><span class="btn-text">Registar</span><div class="spinner hidden"></div></button>
+                            </div>
+                        </form>
+                    </div>
+                     <p class="mt-6 text-center text-sm">Já tem uma conta? <a href="#" id="go-to-login" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">Faça login</a></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-app-view" class="view">
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden opacity-0"></div>
+            <div class="flex h-screen" style="background-color: var(--background);">
+                <!-- Sidebar -->
+                <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col p-4 lg:flex lg:relative lg:translate-x-0">
+                    <div class="flex items-center justify-between gap-3 mb-10 px-2">
+                        <div class="flex items-center gap-3">
+                            <svg class="h-10 w-auto text-sky-400" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>
+                            <h1 class="text-2xl font-bold">Vitalis</h1>
+                        </div>
+                        <button id="close-sidebar-btn" class="lg:hidden text-slate-400 hover:text-white">
+                            <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <nav class="flex-grow">
+                        <ul class="space-y-2">
+                            <li><a href="#" class="nav-link active" data-page="dashboard-content"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg><span>Dashboard</span></a></li>
+                            <li><a href="#" class="nav-link" data-page="patients-list-content"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg><span>Pacientes</span></a></li>
+                        </ul>
+                    </nav>
+                    <div class="mt-auto">
+                        <div class="px-2 mb-4"><p id="user-greeting" class="text-sm text-slate-400"></p></div>
+                        <button id="logout-btn" class="w-full text-left flex items-center gap-3 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" /></svg>Sair</button>
+                    </div>
+                </aside>
+
+                <!-- Main Content -->
+                <main class="flex-1 flex flex-col h-screen">
+                    <!-- Top Bar for mobile -->
+                    <header class="lg:hidden p-4 sticky top-0 z-30 flex justify-between items-center border-b" style="background-color: var(--card); border-color: var(--border);">
+                        <button id="menu-btn" style="color: var(--text-secondary);">
+                             <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        </button>
+                        <h1 class="font-bold text-lg text-sky-500">Vitalis</h1>
+                        <button id="theme-toggle-mobile" style="color: var(--text-secondary);"></button>
+                    </header>
+                    
+                    <div class="flex-1 overflow-y-auto">
+                        <!-- Dashboard Page -->
+                        <div id="dashboard-content" class="page-content active">
+                            <div class="p-4 sm:p-8">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6">
+                                    <div>
+                                        <h2 class="text-3xl font-bold">Visão Geral</h2>
+                                        <p id="dashboard-date" class="text-sm" style="color: var(--text-secondary);"></p>
+                                    </div>
+                                    <div class="flex items-center gap-4 mt-4 sm:mt-0">
+                                        <div id="dashboard-clock" class="text-2xl sm:text-3xl font-mono font-bold bg-card px-4 py-2 rounded-lg shadow-sm border" style="border-color: var(--border);"></div>
+                                        <button id="theme-toggle-desktop" class="hidden lg:block p-2 rounded-full" style="color: var(--text-secondary); background-color: var(--card); border: 1px solid var(--border);"></button>
+                                    </div>
+                                </div>
+                                <div id="dashboard-loader" class="flex justify-center items-center py-20"><div class="main-spinner"></div></div>
+                                <div id="dashboard-grid" class="hidden grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div class="lg:col-span-2 space-y-6">
+                                        <div id="dashboard-analytics" class="grid grid-cols-1 sm:grid-cols-3 gap-6"></div>
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="weekly-activity-chart"></canvas></div>
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);">
+                                            <h3 class="font-bold text-lg mb-4">Atividades Recentes</h3>
+                                            <div id="recent-activity-feed" class="space-y-4"></div>
+                                        </div>
+                                    </div>
+                                    <div class="lg:col-span-1 space-y-6">
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="patient-status-chart"></canvas></div>
+                                        <div class="card p-4 sm:p-6 rounded-xl shadow-md border" style="border-color: var(--border);">
+                                            <h3 class="font-bold text-lg mb-4">Pacientes em Foco</h3>
+                                            <div id="attention-patients-list" class="space-y-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Patients List Page -->
+                        <div id="patients-list-content" class="page-content">
+                             <div class="p-4 sm:p-8">
+                                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+                                    <h2 class="text-3xl font-bold">Os Meus Pacientes</h2>
+                                    <button id="add-patient-btn" class="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold shadow-sm"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>Adicionar Paciente</button>
+                                </div>
+                                <div id="patient-list-container" class="card rounded-xl shadow-md border" style="border-color: var(--border);"></div>
+                             </div>
+                        </div>
+                        
+                        <!-- Patient Detail/Analytics Page -->
+                        <div id="patient-detail-content" class="page-content">
+                            <div class="p-4 sm:p-8">
+                               <div id="patient-header-container"></div>
+                               <div id="patient-analytics-dashboard" class="mt-6"></div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="form-modal" class="modal fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center p-4">
+        <div id="form-modal-content" class="card rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"></div>
+    </div>
+    
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center p-4">
+         <div class="card rounded-xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <svg class="mx-auto h-12 w-12 text-amber-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+            <h3 class="text-xl font-bold mt-4" id="confirm-title"></h3>
+            <p class="text-sm mt-2" id="confirm-text" style="color: var(--text-secondary);"></p>
+            <div class="mt-6 flex justify-center gap-3">
+                <button id="confirm-cancel-btn" class="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-6 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold">Cancelar</button>
+                <button id="confirm-ok-btn" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-5 right-5 bg-slate-900 text-white py-3 px-6 rounded-lg shadow-lg transform translate-x-[120%] transition-transform duration-500 ease-in-out z-[1000]">
+        <p id="toast-message"></p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js)";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js)";
+        import { getFirestore, collection, doc, setDoc, getDoc, addDoc, getDocs, query, where, orderBy, serverTimestamp, deleteDoc } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js)";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTDgwIWpksq1Mq0ishsip-GjeCg-HfciU",
+            authDomain: "vitalis-2f59e.firebaseapp.com",
+            projectId: "vitalis-2f59e",
+            storageBucket: "vitalis-2f59e.appspot.com",
+            messagingSenderId: "937321386983",
+            appId: "1:937321386983:web:07dfefe800ee3e2b02e342",
+            measurementId: "G-51WZBK52BC"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        const appState = { user: null, patients: [], records: new Map(), currentPatientId: null, charts: {}, clockInterval: null };
+
+        const dom = {
+            html: document.documentElement,
+            body: document.body,
+            views: document.querySelectorAll('.view'),
+            globalLoader: document.getElementById('global-loader'),
+            toast: { element: document.getElementById('toast'), message: document.getElementById('toast-message')},
+            auth: {
+                loginForm: document.getElementById('login-form'), registerForm: document.getElementById('register-form'),
+                googleLoginBtn: document.getElementById('google-login-btn'), goToRegister: document.getElementById('go-to-register'),
+                goToLogin: document.getElementById('go-to-login'),
+            },
+            main: {
+                sidebar: document.getElementById('sidebar'), menuBtn: document.getElementById('menu-btn'), closeSidebarBtn: document.getElementById('close-sidebar-btn'),
+                sidebarOverlay: document.getElementById('sidebar-overlay'),
+                greeting: document.getElementById('user-greeting'), logoutBtn: document.getElementById('logout-btn'), navLinks: document.querySelectorAll('.nav-link'),
+                themeToggles: [document.getElementById('theme-toggle-desktop'), document.getElementById('theme-toggle-mobile')]
+            },
+            dashboard: {
+                grid: document.getElementById('dashboard-grid'), loader: document.getElementById('dashboard-loader'), date: document.getElementById('dashboard-date'),
+                clock: document.getElementById('dashboard-clock'), analytics: document.getElementById('dashboard-analytics'),
+                activityFeed: document.getElementById('recent-activity-feed'), attentionList: document.getElementById('attention-patients-list'),
+            },
+            patients: { container: document.getElementById('patient-list-container'), addBtn: document.getElementById('add-patient-btn') },
+            patientDetail: { header: document.getElementById('patient-header-container'), dashboard: document.getElementById('patient-analytics-dashboard') },
+            modals: {
+                form: document.getElementById('form-modal'), formContent: document.getElementById('form-modal-content'), confirm: document.getElementById('confirm-modal'),
+                confirmTitle: document.getElementById('confirm-title'), confirmText: document.getElementById('confirm-text'),
+                confirmOkBtn: document.getElementById('confirm-ok-btn'), confirmCancelBtn: document.getElementById('confirm-cancel-btn'),
+            }
+        };
+
+        const clinicalUtils = {
+            getStabilityStatus(record) {
+                if (!record) return { text: "Dados insuficientes", colorClass: "text-slate-500", bgColorClass: "bg-slate-100 dark:bg-slate-700", level: 0, reason: null };
+                
+                let score = 0;
+                let reasons = [];
+                
+                if (record.saturacao && record.saturacao < 94) { score++; reasons.push("SpO₂ Baixa"); }
+                if (record.batimentos) {
+                    if (record.batimentos < 50) { score++; reasons.push("Bradicardia"); }
+                    if (record.batimentos > 120) { score++; reasons.push("Taquicardia"); }
+                }
+                if (record.pressao) {
+                    const parts = record.pressao.split('/');
+                    if (parts.length === 2) {
+                        const [systolic, diastolic] = parts.map(Number);
+                        if (!isNaN(systolic) && !isNaN(diastolic)) {
+                            if (systolic > 140 || diastolic > 90) { score++; reasons.push("Hipertensão"); }
+                            if (systolic < 90) { score++; reasons.push("Hipotensão"); }
+                        }
+                    }
+                }
+
+                if (score >= 2) return { text: "Alerta Crítico", colorClass: "text-red-800 dark:text-red-200", bgColorClass: "bg-red-100 dark:bg-red-900/50", level: 2, reason: reasons.join(', ') };
+                if (score === 1) return { text: "Requer Atenção", colorClass: "text-amber-800 dark:text-amber-200", bgColorClass: "bg-amber-100 dark:bg-amber-900/50", level: 1, reason: reasons.join(', ') };
+                return { text: "Estável", colorClass: "text-green-800 dark:text-green-200", bgColorClass: "bg-green-100 dark:bg-green-900/50", level: 0, reason: null };
+            },
+            getTrend(data, key) {
+                if (!data || data.length < 2 || data[0][key] == null || data[1][key] == null) return { icon: '<span>-</span>', colorClass: 'text-slate-500' };
+                const last = data[0][key];
+                const prev = data[1][key];
+                if (last > prev) return { icon: '▲', colorClass: 'text-red-500' };
+                if (last < prev) return { icon: '▼', colorClass: 'text-green-500' };
+                return { icon: '●', colorClass: 'text-sky-500' };
+            },
+            calculateAverages(records) {
+                const sums = { batimentos: 0, saturacao: 0, count: 0 };
+                if(records) {
+                    records.forEach(r => {
+                        if (r.batimentos != null && r.saturacao != null) {
+                            sums.batimentos += r.batimentos;
+                            sums.saturacao += r.saturacao;
+                            sums.count++;
+                        }
+                    });
+                }
+                return sums.count > 0 ? {
+                    batimentos: (sums.batimentos / sums.count).toFixed(0),
+                    saturacao: (sums.saturacao / sums.count).toFixed(1)
+                } : { batimentos: 'N/A', saturacao: 'N/A' };
+            }
+        };
+
+        const ui = {
+            showView: (viewId) => dom.views.forEach(v => v.classList.toggle('active', v.id === viewId)),
+            showPage(pageId) {
+                document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                dom.main.navLinks.forEach(l => l.classList.toggle('active', l.dataset.page === pageId));
+            },
+            setLoading(btn, isLoading) {
+                const text = btn.querySelector('.btn-text');
+                const spinner = btn.querySelector('.spinner');
+                btn.disabled = isLoading;
+                if(text) text.style.display = isLoading ? 'none' : 'block';
+                if(spinner) spinner.style.display = isLoading ? 'block' : 'none';
+            },
+            showToast(message, isError = false) {
+                dom.toast.message.textContent = message;
+                dom.toast.element.className = 'fixed top-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transform transition-transform duration-500 ease-in-out z-[1000]';
+                dom.toast.element.classList.add(isError ? 'bg-red-600' : 'bg-slate-900');
+                dom.toast.element.classList.remove('translate-x-[120%]');
+                setTimeout(() => dom.toast.element.classList.add('translate-x-[120%]'), 3000);
+            },
+            showModal: (modalId) => dom.modals[modalId].classList.add('flex'),
+            hideModal: (modalId) => dom.modals[modalId].classList.remove('flex'),
+            
+            renderMainDashboard() {
+                dom.dashboard.loader.style.display = 'none';
+                dom.dashboard.grid.style.display = 'grid';
+
+                const totalPatients = appState.patients.length;
+                let attentionCount = 0;
+                let criticalCount = 0;
+                let stableCount = 0;
+                const attentionPatients = [];
+                let allRecords = [];
+
+                appState.patients.forEach(p => {
+                    const records = appState.records.get(p.id) || [];
+                    if (records.length > 0) {
+                        const lastRecord = records[0];
+                        allRecords.push({ ...lastRecord, patientName: p.name, patientId: p.id });
+                        const status = clinicalUtils.getStabilityStatus(lastRecord);
+                        if (status.level === 1) { attentionCount++; attentionPatients.push({ patient: p, record: lastRecord, status }); }
+                        else if (status.level === 2) { criticalCount++; attentionPatients.push({ patient: p, record: lastRecord, status }); }
+                        else { stableCount++; }
+                    } else {
+                        stableCount++; 
+                    }
+                });
+
+                dom.dashboard.analytics.innerHTML = `
+                    ${this.createAnalyticsCardHTML('Pacientes Totais', totalPatients, 'bg-sky-600')}
+                    ${this.createAnalyticsCardHTML('Requerem Atenção', attentionCount, 'bg-amber-500')}
+                    ${this.createAnalyticsCardHTML('Alertas Críticos', criticalCount, 'bg-red-600')}
+                `;
+
+                if (attentionPatients.length > 0) {
+                    attentionPatients.sort((a,b) => b.status.level - a.status.level);
+                    dom.dashboard.attentionList.innerHTML = attentionPatients.map(item => this.createAttentionPatientHTML(item.patient, item.status)).join('');
+                } else {
+                    dom.dashboard.attentionList.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--text-secondary);">Nenhum paciente em foco no momento.</p>`;
+                }
+
+                if (allRecords.length > 0) {
+                    allRecords.sort((a,b) => b.date.toMillis() - a.date.toMillis());
+                    dom.dashboard.activityFeed.innerHTML = allRecords.slice(0, 5).map(record => this.createActivityItemHTML(record)).join('');
+                } else {
+                    dom.dashboard.activityFeed.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--text-secondary);">Nenhuma atividade registada.</p>`;
+                }
+
+                this.renderDashboardCharts({ stable: stableCount, attention: attentionCount, critical: criticalCount }, allRecords);
+            },
+            createAnalyticsCardHTML(title, value, bgColorClass) {
+                return `<div class="p-5 rounded-xl shadow-lg text-white ${bgColorClass}">
+                    <p class="text-sm font-medium text-white/80">${title}</p>
+                    <p class="text-3xl font-bold mt-2">${value}</p>
+                </div>`;
+            },
+            createAttentionPatientHTML(patient, status) {
+                return `
+                    <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-500/10 border border-transparent">
+                        <div class="w-2 h-10 rounded-full ${status.bgColorClass.replace('100', '500').replace('dark:bg-','bg-')} mt-1"></div>
+                        <div>
+                            <p class="font-semibold">${patient.name}</p>
+                            <p class="text-xs font-bold ${status.colorClass}">${status.text} <span class="font-normal" style="color: var(--text-secondary);">(${status.reason})</span></p>
+                        </div>
+                    </div>`;
+            },
+            createActivityItemHTML(record) {
+                return `
+                    <div class="flex gap-4">
+                        <div class="text-right">
+                            <p class="font-semibold text-sm">${utils.formatDateTime(record.date, true)}</p>
+                            <p class="text-xs" style="color: var(--text-secondary);">${utils.formatDate(record.date.toDate(), true)}</p>
+                        </div>
+                        <div class="relative pl-4 flex-1">
+                           <div class="absolute top-1 -left-[5px] w-2.5 h-2.5 bg-sky-500 rounded-full border-2" style="border-color: var(--card);"></div>
+                           <div class="h-full w-px absolute top-2 -left-px" style="background-color: var(--border);"></div>
+                           <p class="text-sm font-medium">${record.patientName}</p>
+                           <p class="text-xs" style="color: var(--text-secondary);">Novo registo de sinais vitais adicionado.</p>
+                        </div>
+                    </div>
+                `;
+            },
+             renderPatientList() {
+                 const container = dom.patients.container;
+                if (appState.patients.length === 0) {
+                    container.innerHTML = `<p class="text-center p-8" style="color: var(--text-secondary);">Nenhum paciente registado.</p>`; return;
+                }
+                container.innerHTML = `
+                    <!-- Vista de Tabela para Desktop -->
+                    <div class="hidden md:block">
+                        <table class="w-full text-left">
+                            <thead class="border-b text-sm" style="border-color: var(--border); color: var(--text-secondary);">
+                                <tr><th class="p-4 font-semibold">Nome</th><th class="p-4 font-semibold">CPF</th><th class="p-4 font-semibold">Idade</th><th class="p-4 font-semibold">Status</th><th class="p-4"></th></tr>
+                            </thead>
+                            <tbody>${appState.patients.map(p => this.createPatientRowHTML(p)).join('')}</tbody>
+                        </table>
+                    </div>
+                    <!-- Vista de Cartões para Mobile -->
+                    <div class="md:hidden space-y-4 p-2">
+                        ${appState.patients.map(p => this.createPatientCardHTML(p)).join('')}
+                    </div>
+                `;
+            },
+            createPatientRowHTML(patient) {
+                const records = appState.records.get(patient.id) || [];
+                const status = clinicalUtils.getStabilityStatus(records[0]);
+                return `
+                    <tr class="border-b" style="border-color: var(--border);">
+                        <td class="p-4 font-semibold">${patient.name}</td>
+                        <td class="p-4" style="color: var(--text-secondary);">${patient.cpf}</td>
+                        <td class="p-4" style="color: var(--text-secondary);">${utils.calculateAge(patient.dob)} anos</td>
+                        <td class="p-4"><span class="px-3 py-1 text-xs font-semibold rounded-full ${status.bgColorClass} ${status.colorClass}">${status.text}</span></td>
+                        <td class="p-4 text-right">
+                            <button class="view-patient-btn bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 py-1 px-3 rounded-md text-sm font-semibold" data-id="${patient.id}">Analisar</button>
+                            <button class="delete-patient-btn text-slate-400 hover:text-red-500 p-2" data-id="${patient.id}" data-name="${patient.name}"><svg class="w-4 h-4 pointer-events-none" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                        </td>
+                    </tr>`;
+            },
+            createPatientCardHTML(patient) {
+                 const records = appState.records.get(patient.id) || [];
+                const status = clinicalUtils.getStabilityStatus(records[0]);
+                return `
+                    <div class="p-4 rounded-lg border" style="border-color: var(--border);">
+                        <div class="flex justify-between items-start">
+                             <div>
+                                <p class="font-bold text-lg">${patient.name}</p>
+                                <p class="text-sm" style="color: var(--text-secondary);">${utils.calculateAge(patient.dob)} anos</p>
+                             </div>
+                              <span class="px-3 py-1 text-xs font-semibold rounded-full ${status.bgColorClass} ${status.colorClass}">${status.text}</span>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center">
+                            <button class="view-patient-btn bg-sky-600 text-white py-2 px-4 rounded-md text-sm font-semibold flex-grow" data-id="${patient.id}">Analisar Paciente</button>
+                            <button class="delete-patient-btn text-slate-400 hover:text-red-500 p-2 ml-2" data-id="${patient.id}" data-name="${patient.name}"><svg class="w-5 h-5 pointer-events-none" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                        </div>
+                    </div>
+                `;
+            },
+            renderPatientAnalyticsDashboard() {
+                const patient = appState.patients.find(p => p.id === appState.currentPatientId);
+                const records = appState.records.get(appState.currentPatientId) || [];
+                const lastRecord = records[0] || {};
+                const averages = clinicalUtils.calculateAverages(records);
+
+                dom.patientDetail.header.innerHTML = this.createPatientDetailHeaderHTML(patient);
+                dom.patientDetail.dashboard.innerHTML = this.createPatientAnalyticsHTML(lastRecord, averages, records);
+                this.renderAllCharts(records);
+            },
+            createPatientDetailHeaderHTML(patient) {
+                if (!patient) return '';
+                const age = utils.calculateAge(patient.dob);
+                return `
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                        <div>
+                            <h2 class="text-3xl font-bold">${patient.name}</h2>
+                            <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm mt-2" style="color: var(--text-secondary);">
+                                <span><strong>CPF:</strong> ${patient.cpf}</span>
+                                <span><strong>Nasc:</strong> ${utils.formatDate(patient.dob)} (${age} anos)</span>
+                                <span><strong>Gênero:</strong> ${patient.gender}</span>
+                            </div>
+                        </div>
+                        <button id="export-pdf-btn" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-800 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold shadow-sm">
+                            <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L14 2.586A2 2 0 0012.586 2H4z" /><path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L14 2.586A2 2 0 0012.586 2H4z" fill-opacity="0.2" /><path d="M8 12a1 1 0 100 2h4a1 1 0 100-2H8z" /></svg>
+                            Exportar PDF
+                        </button>
+                    </div>`;
+            },
+            createPatientAnalyticsHTML(last, avg, records) {
+                const status = clinicalUtils.getStabilityStatus(last);
+                return `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                ${this.createVitalCardHTML('Freq. Cardíaca', last.batimentos, 'bpm', avg.batimentos, clinicalUtils.getTrend(records, 'batimentos'))}
+                                ${this.createVitalCardHTML('Saturação O₂', last.saturacao, '%', avg.saturacao, clinicalUtils.getTrend(records, 'saturacao'))}
+                                ${this.createVitalCardHTML('Pressão Arterial', last.pressao, 'mmHg', 'N/A', {icon:'-', colorClass:'text-slate-500'})}
+                            </div>
+                            <div class="card p-4 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="hrChart"></canvas></div>
+                            <div class="card p-4 rounded-xl shadow-md border" style="border-color: var(--border);"><canvas id="bpChart"></canvas></div>
+                        </div>
+                        <div class="space-y-6">
+                             <div class="card p-6 rounded-xl shadow-md text-center border" style="border-color: var(--border);">
+                                <p class="text-sm font-medium" style="color: var(--text-secondary);">Status de Estabilidade</p>
+                                <p class="text-2xl font-bold mt-2 ${status.colorClass}">${status.text}</p>
+                                <p class="text-xs mt-1" style="color: var(--text-secondary);">Baseado no último registo</p>
+                            </div>
+                             <div class="card p-6 rounded-xl shadow-md border" style="border-color: var(--border);">
+                                <h3 class="font-bold text-lg mb-4">Últimos Registos</h3>
+                                <div id="mini-records-list" class="space-y-3 max-h-96 overflow-y-auto">
+                                ${records.length > 0 ? records.slice(0,5).map(r => this.createMiniRecordHTML(r)).join('') : `<p class="text-sm" style="color: var(--text-secondary);">Sem registos.</p>`}
+                                </div>
+                                 <button id="add-record-btn" class="bg-sky-600 hover:bg-sky-700 text-white w-full mt-4 py-2 px-4 rounded-lg font-semibold">Novo Registo</button>
+                            </div>
+                            <div class="card p-4 rounded-xl shadow-md text-sm border" style="border-color: var(--border);">
+                                <p class="font-bold">AVISO LEGAL</p>
+                                <p class="mt-1" style="color: var(--text-secondary);">As análises são ferramentas de apoio e não substituem o julgamento clínico profissional.</p>
+                            </div>
+                        </div>
+                    </div>`;
+            },
+            createVitalCardHTML(title, value, unit, avg, trend) {
+                return `
+                    <div class="card p-4 rounded-xl shadow-md border" style="border-color: var(--border);">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm font-medium" style="color: var(--text-secondary);">${title}</p>
+                            <span class="text-lg font-bold ${trend.colorClass}">${trend.icon}</span>
+                        </div>
+                        <p class="text-3xl font-bold mt-2">${value || 'N/A'}</p>
+                        <div class="flex justify-between items-end text-sm mt-1">
+                            <span style="color: var(--text-secondary);">${unit}</span>
+                            <span class="text-slate-400 dark:text-slate-500">Média: ${avg}</span>
+                        </div>
+                    </div>`;
+            },
+            createMiniRecordHTML(record) {
+                return `
+                    <div class="flex justify-between items-center text-sm border-b pb-2" style="border-color: var(--border);">
+                        <div>
+                            <p class="font-semibold">${utils.formatDateTime(record.date)}</p>
+                            <p class="text-xs" style="color: var(--text-secondary);">${record.estadoGeral}</p>
+                        </div>
+                        <button class="delete-record-btn text-slate-400 hover:text-red-500 p-1" data-id="${record.id}">
+                            <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-4 w-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>`;
+            },
+            renderDashboardCharts(statusData, allRecords) {
+                const isDark = dom.html.classList.contains('dark');
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const textColor = isDark ? '#cbd5e1' : '#64748b';
+
+                const statusCtx = document.getElementById('patient-status-chart')?.getContext('2d');
+                if(statusCtx) {
+                    if (appState.charts.status) appState.charts.status.destroy();
+                    appState.charts.status = new Chart(statusCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Estável', 'Atenção', 'Crítico'],
+                            datasets: [{
+                                data: [statusData.stable, statusData.attention, statusData.critical],
+                                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                                borderColor: isDark ? '#0f172a' : '#ffffff',
+                                borderWidth: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: true,
+                            plugins: { 
+                                title: { display: true, text: 'Distribuição de Status dos Pacientes', color: textColor, font: { size: 16 } },
+                                legend: { position: 'bottom', labels: { color: textColor } }
+                            }
+                        }
+                    });
+                }
+                
+                const activityData = Array(7).fill(0);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const dayLabels = Array(7).fill(0).map((_, i) => {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() - (6 - i));
+                    return d;
+                });
+
+                allRecords.forEach(r => {
+                    const recordDate = r.date.toDate();
+                    recordDate.setHours(0, 0, 0, 0);
+                    const diffDays = Math.floor((today - recordDate) / (1000 * 60 * 60 * 24));
+                    if (diffDays >= 0 && diffDays < 7) {
+                        activityData[6 - diffDays]++;
+                    }
+                });
+
+                const activityCtx = document.getElementById('weekly-activity-chart')?.getContext('2d');
+                if(activityCtx) {
+                    if (appState.charts.activity) appState.charts.activity.destroy();
+                    appState.charts.activity = new Chart(activityCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: dayLabels.map(d => d.toLocaleDateString('pt-BR', {weekday: 'short'})),
+                            datasets: [{
+                                label: 'Registos por Dia',
+                                data: activityData,
+                                backgroundColor: '#0ea5e9',
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                             responsive: true, maintainAspectRatio: true,
+                             scales: {
+                                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, stepSize: 1 } },
+                                x: { grid: { display: false }, ticks: { color: textColor } }
+                             },
+                             plugins: { 
+                                title: { display: true, text: 'Atividade da Última Semana', color: textColor, font: { size: 16 } },
+                                legend: { display: false }
+                            }
+                        }
+                    })
+                }
+            },
+            renderAllCharts(records) {
+                if(!records || records.length === 0) {
+                     ['hrChart', 'bpChart'].forEach(id => {
+                        if (appState.charts[id]) appState.charts[id].destroy();
+                        const canvas = document.getElementById(id);
+                        if(canvas) {
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0,0,canvas.width,canvas.height);
+                            ctx.font = "16px Inter";
+                            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary');
+                            ctx.textAlign = "center";
+                            ctx.fillText("Sem dados suficientes para o gráfico.", canvas.width / 2, canvas.height / 2);
+                        }
+                    });
+                    return;
+                };
+
+                const isDark = dom.html.classList.contains('dark');
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const textColor = isDark ? '#cbd5e1' : '#64748b';
+
+                const reversedRecords = [...records].reverse();
+                
+                this.renderLineChart('hrChart', 'Frequência Cardíaca (bpm)', reversedRecords.map(r => r.date.toDate()), reversedRecords.map(r => r.batimentos), '#ef4444', 'rgba(239, 68, 68, 0.1)', gridColor, textColor);
+
+                const bpData = reversedRecords.map(r => {
+                    if (!r.pressao || !r.pressao.includes('/')) return { s: null, d: null };
+                    const [s, d] = r.pressao.split('/').map(Number);
+                    return { s, d };
+                });
+                
+                if (appState.charts['bpChart']) appState.charts['bpChart'].destroy();
+                const bpCtx = document.getElementById('bpChart')?.getContext('2d');
+                if(bpCtx) {
+                    appState.charts['bpChart'] = new Chart(bpCtx, {
+                        type: 'line',
+                        data: {
+                            labels: reversedRecords.map(r => r.date.toDate()),
+                            datasets: [
+                                { label: 'Sistólica (mmHg)', data: bpData.map(p => p.s), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.3 },
+                                { label: 'Diastólica (mmHg)', data: bpData.map(p => p.d), borderColor: '#16a34a', backgroundColor: 'rgba(22, 163, 74, 0.1)', fill: true, tension: 0.3 }
+                            ]
+                        },
+                        options: { 
+                            responsive: true, maintainAspectRatio: true, 
+                            scales: {
+                                x: { type: 'time', time: { unit: 'day' }, grid: {color: gridColor}, ticks: {color: textColor}},
+                                y: { beginAtZero: false, grid: {color: gridColor}, ticks: {color: textColor} }
+                            },
+                            plugins: { title: { display: true, text: 'Pressão Arterial (mmHg)', color: textColor}, legend: {labels: {color: textColor}} }
+                        }
+                    });
+                }
+            },
+            renderLineChart(canvasId, label, labels, data, borderColor, bgColor, gridColor, textColor) {
+                if (appState.charts[canvasId]) appState.charts[canvasId].destroy();
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                 if(ctx) {
+                    appState.charts[canvasId] = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: label, data: data, borderColor: borderColor, backgroundColor: bgColor,
+                                fill: true, tension: 0.3, borderWidth: 2, pointBackgroundColor: borderColor, pointRadius: 3, pointHoverRadius: 5,
+                            }]
+                        },
+                        options: { 
+                            responsive: true, maintainAspectRatio: true, 
+                            scales: { 
+                                x: { type: 'time', time: { unit: 'day' }, grid: {color: gridColor}, ticks: {color: textColor}},
+                                y: { beginAtZero: false, grid: {color: gridColor}, ticks: {color: textColor} }
+                            }, 
+                            plugins: { legend: { display: false }, title: {display: true, text: label, color: textColor} } }
+                    });
+                }
+            },
+            getPatientFormHTML(patient = {}) {
+                return `
+                    <form id="patient-form" class="p-6 sm:p-8 space-y-4" data-id="${patient.id || ''}">
+                        <h2 class="text-2xl font-bold mb-4">${patient.id ? 'Editar Paciente' : 'Novo Paciente'}</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Nome Completo</label><input type="text" name="patient-name" required class="form-input" value="${patient.name || ''}"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">CPF</label><input type="text" name="patient-cpf" required class="form-input" value="${patient.cpf || ''}"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Data de Nascimento</label><input type="date" name="patient-dob" required class="form-input" value="${patient.dob || ''}"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Gênero</label><select name="patient-gender" required class="form-input"><option ${patient.gender === 'Masculino' ? 'selected' : ''}>Masculino</option><option ${patient.gender === 'Feminino' ? 'selected' : ''}>Feminino</option><option ${patient.gender === 'Outro' ? 'selected' : ''}>Outro</option></select></div>
+                            <div class="md:col-span-2"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Diagnóstico (Opcional)</label><input type="text" name="patient-diagnosis" class="form-input" value="${patient.diagnosis || ''}"></div>
+                        </div>
+                        <div class="mt-6 flex justify-end gap-3"><button type="button" class="btn-cancel bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600 py-2 px-4 rounded-lg font-semibold">Cancelar</button><button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white py-2 px-4 rounded-lg font-semibold">Salvar</button></div>
+                    </form>`;
+            },
+            getRecordFormHTML() {
+                return `
+                    <form id="record-form" class="p-6 sm:p-8 space-y-4">
+                        <h2 class="text-2xl font-bold mb-4">Novo Registo de Sinais Vitais</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div class="col-span-2 md:col-span-3"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Estado Geral</label><select name="record-estado" required class="form-input"><option>Lúcido</option><option>Sonolento</option><option>Confuso</option><option>Inconsciente</option></select></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">SpO₂ (%)</label><input type="number" name="record-saturacao" placeholder="98" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">BPM</label><input type="number" name="record-batimentos" placeholder="75" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">RPM</label><input type="number" name="record-respiracao" placeholder="16" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Temp (°C)</label><input type="text" name="record-temperatura" placeholder="36.5" class="form-input"></div>
+                            <div class="col-span-2"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Pressão Arterial</hlabel><input type="text" name="record-pressao" placeholder="120/80" class="form-input"></div>
+                            <div><label class="block text-sm font-medium" style="color: var(--text-secondary);">Glicemia</label><input type="number" name="record-glicemia" placeholder="99" class="form-input"></div>
+                            <div class="col-span-2 md:col-span-3"><label class="block text-sm font-medium" style="color: var(--text-secondary);">Anotações (Opcional)</label><textarea name="record-notas" rows="3" class="form-input"></textarea></div>
+                        </div>
+                        <div class="mt-6 flex justify-end gap-3"><button type="button" class="btn-cancel bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600 py-2 px-4 rounded-lg font-semibold">Cancelar</button><button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-semibold">Salvar</button></div>
+                    </form>`;
+            }
+        };
+
+        const api = {
+            async handleUserRegistration(user, name) {
+                const userRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userRef);
+                if (!userDoc.exists()) {
+                    await setDoc(userRef, { name: name || user.displayName, email: user.email, createdAt: serverTimestamp() });
+                }
+                const finalDoc = await getDoc(userRef);
+                return finalDoc.data();
+            },
+            async fetchAllInitialData() {
+                const qPatients = query(collection(db, "patients"), where("userId", "==", appState.user.uid));
+                const patientsSnapshot = await getDocs(qPatients);
+                const patientsList = patientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                appState.patients = patientsList.sort((a, b) => a.name.localeCompare(b.name));
+                const recordPromises = appState.patients.map(p => {
+                    const qRecords = query(collection(db, `patients/${p.id}/records`), orderBy("date", "desc"));
+                    return getDocs(qRecords);
+                });
+                const recordsSnapshots = await Promise.all(recordPromises);
+                appState.records.clear();
+                recordsSnapshots.forEach((snapshot, index) => {
+                    const patientId = appState.patients[index].id;
+                    appState.records.set(patientId, snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+            },
+            async addOrUpdatePatient(data, id) {
+                 if (id) { await setDoc(doc(db, "patients", id), { ...data, userId: appState.user.uid }, { merge: true }); return { id }; } 
+                 else { return await addDoc(collection(db, "patients"), { ...data, userId: appState.user.uid }); }
+            },
+            deletePatient: async (id) => await deleteDoc(doc(db, "patients", id)),
+            addRecord: async (patientId, data) => await addDoc(collection(db, `patients/${patientId}/records`), { ...data, date: serverTimestamp() }),
+            deleteRecord: async (patientId, recordId) => await deleteDoc(doc(db, `patients/${patientId}/records`, recordId)),
+        };
+
+        const utils = {
+            formatDate: (d, short = false) => {
+                if(!d) return 'N/A';
+                const date = (d instanceof Date) ? d : new Date(d + 'T00:00:00');
+                if (short) return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                return date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            },
+            formatDateTime: (ts, short = false) => {
+                if(!ts || !ts.toDate) return 'N/A';
+                const date = ts.toDate();
+                if(short) return date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            },
+            calculateAge: (dob) => {
+                if (!dob) return '';
+                const diff = Date.now() - new Date(dob).getTime();
+                const age = new Date(diff).getUTCFullYear() - 1970;
+                return age > 0 ? age : '< 1';
+            },
+            mapAuthError: (code) => ({'auth/wrong-password': 'Senha incorreta.','auth/user-not-found': 'Utilizador não encontrado.','auth/email-already-in-use': 'Este email já está em utilização.'}[code] || 'Ocorreu um erro.')
+        };
+        
+        async function handleLogin(method, credentials = {}) {
+            let btn = dom.auth.loginForm.querySelector('button[type="submit"]');
+            if (method === 'google') btn = dom.auth.googleLoginBtn;
+            ui.setLoading(btn, true);
+            try {
+                if (method === 'google') await signInWithPopup(auth, googleProvider);
+                else await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+            } catch (error) { ui.showToast(utils.mapAuthError(error.code), true); } 
+            finally { ui.setLoading(btn, false); }
+        }
+        function handleLogout() {
+            signOut(auth);
+            if(appState.clockInterval) clearInterval(appState.clockInterval);
+        }
+        function openConfirmationModal(title, text, onConfirm) {
+            dom.modals.confirmTitle.textContent = title;
+            dom.modals.confirmText.textContent = text;
+            ui.showModal('confirm');
+            dom.modals.confirmOkBtn.onclick = () => { onConfirm(); ui.hideModal('confirm'); };
+        }
+        async function refreshAllData() {
+            dom.dashboard.loader.style.display = 'flex';
+            dom.dashboard.grid.style.display = 'none';
+            await api.fetchAllInitialData();
+            ui.renderMainDashboard();
+            ui.renderPatientList();
+            if (appState.currentPatientId) {
+                ui.renderPatientAnalyticsDashboard();
+            }
+        }
+        function generatePDF() {
+            if (!appState.currentPatientId) return;
+            ui.showToast("A gerar PDF...");
+            const patient = appState.patients.find(p => p.id === appState.currentPatientId);
+            const records = appState.records.get(appState.currentPatientId);
+            const { jsPDF } = window.jspdf; const docPDF = new jsPDF();
+            docPDF.setFontSize(20).text("Relatório de Sinais Vitais", 105, 20, { align: 'center' });
+            docPDF.setFontSize(12);
+            docPDF.text(`Paciente: ${patient.name}`, 14, 40); docPDF.text(`CPF: ${patient.cpf}`, 14, 47);
+            docPDF.text(`Nascimento: ${utils.formatDate(patient.dob)}`, 14, 54);
+            const tableColumn = ["Data/Hora", "Estado", "SpO₂ (%)", "BPM", "RPM", "Temp (°C)", "PA (mmHg)", "Glicemia"];
+            const tableRows = records.map(r => [
+                utils.formatDateTime(r.date), r.estadoGeral||'-', r.saturacao||'-', r.batimentos||'-', r.respiracao||'-', r.temperatura||'-', r.pressao||'-', r.glicemia||'-'
+            ]);
+            docPDF.autoTable({ head: [tableColumn], body: tableRows, startY: 65 });
+            const finalY = docPDF.lastAutoTable.finalY || 100;
+            docPDF.setFontSize(10).text("______________________________________", 14, finalY + 20);
+            docPDF.text("Assinatura do Profissional Responsável", 14, finalY + 25);
+            docPDF.save(`relatorio_${patient.name.replace(/\s/g, '_')}.pdf`);
+        }
+        
+        function initTheme() {
+            const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+
+            const updateIcons = (isDark) => dom.main.themeToggles.forEach(btn => btn.innerHTML = isDark ? sunIcon : moonIcon);
+
+            const setTheme = (isDark) => {
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                dom.html.classList.toggle('dark', isDark);
+                updateIcons(isDark);
+                
+                // Força a re-leitura das variáveis CSS e atualiza os gráficos
+                setTimeout(() => {
+                    const newTextColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+                    const newGridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+
+                    Object.values(appState.charts).forEach(chart => {
+                        if(chart.options.scales){
+                           Object.values(chart.options.scales).forEach(axis => {
+                               if(axis.grid) axis.grid.color = newGridColor;
+                               if(axis.ticks) axis.ticks.color = newTextColor;
+                           });
+                        }
+                        if(chart.options.plugins.legend) chart.options.plugins.legend.labels.color = newTextColor;
+                        if(chart.options.plugins.title) chart.options.plugins.title.color = newTextColor;
+                        chart.update();
+                    });
+                }, 50);
+            };
+
+            dom.main.themeToggles.forEach(btn => btn.addEventListener('click', () => {
+                setTheme(!dom.html.classList.contains('dark'));
+            }));
+
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(savedTheme === 'dark' || (!savedTheme && prefersDark));
+        }
+
+        function init() {
+            initTheme();
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (appState.clockInterval) clearInterval(appState.clockInterval);
+                dom.globalLoader.style.display = 'none';
+                if (user) {
+                    const userData = await api.handleUserRegistration(user);
+                    appState.user = { uid: user.uid, email: user.email, name: userData.name };
+                    dom.main.greeting.textContent = `Olá, ${appState.user.name.split(' ')[0]}`;
+                    ui.showView('main-app-view'); ui.showPage('dashboard-content');
+                    const updateClock = () => {
+                         const now = new Date();
+                         dom.dashboard.date.textContent = utils.formatDate(now);
+                         dom.dashboard.clock.textContent = now.toLocaleTimeString('pt-BR');
+                    };
+                    updateClock(); appState.clockInterval = setInterval(updateClock, 1000);
+                    await refreshAllData();
+                } else {
+                    appState.user = null; appState.patients = []; appState.records.clear();
+                    ui.showView('auth-view');
+                }
+            });
+
+            dom.auth.goToRegister.addEventListener('click', e => { e.preventDefault(); ui.showView('register-view'); });
+            dom.auth.goToLogin.addEventListener('click', e => { e.preventDefault(); ui.showView('auth-view'); });
+            dom.auth.loginForm.addEventListener('submit', e => { e.preventDefault(); handleLogin('email', { email: e.target.elements['login-email'].value, password: e.target.elements['login-password'].value }); });
+            dom.auth.registerForm.addEventListener('submit', async e => {
+                e.preventDefault(); const btn = e.submitter; ui.setLoading(btn, true);
+                try {
+                    const { user } = await createUserWithEmailAndPassword(auth, e.target.elements['register-email'].value, e.target.elements['register-password'].value);
+                    await api.handleUserRegistration(user, e.target.elements['register-name'].value);
+                } catch(err) { ui.showToast(utils.mapAuthError(err.code), true); }
+                finally { ui.setLoading(btn, false); }
+            });
+            dom.auth.googleLoginBtn.addEventListener('click', () => handleLogin('google'));
+            dom.main.logoutBtn.addEventListener('click', handleLogout);
+
+            const closeSidebar = () => {
+                dom.main.sidebar.classList.remove('open');
+                dom.main.sidebarOverlay.classList.remove('opacity-100');
+                setTimeout(() => dom.main.sidebarOverlay.classList.add('hidden'), 300);
+            };
+            const openSidebar = () => {
+                dom.main.sidebarOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    dom.main.sidebar.classList.add('open');
+                    dom.main.sidebarOverlay.classList.add('opacity-100');
+                }, 10);
+            };
+
+            dom.main.menuBtn.addEventListener('click', openSidebar);
+            dom.main.closeSidebarBtn.addEventListener('click', closeSidebar);
+            dom.main.sidebarOverlay.addEventListener('click', closeSidebar);
+
+            dom.main.navLinks.forEach(link => link.addEventListener('click', e => { 
+                e.preventDefault(); 
+                ui.showPage(link.dataset.page); 
+                closeSidebar();
+            }));
+
+            dom.patients.addBtn.addEventListener('click', () => { dom.modals.formContent.innerHTML = ui.getPatientFormHTML(); ui.showModal('form'); });
+            dom.patients.container.addEventListener('click', e => {
+                const viewBtn = e.target.closest('.view-patient-btn');
+                const deleteBtn = e.target.closest('.delete-patient-btn');
+                if (viewBtn) {
+                    appState.currentPatientId = viewBtn.dataset.id;
+                    ui.renderPatientAnalyticsDashboard();
+                    ui.showPage('patient-detail-content');
+                } else if (deleteBtn) {
+                    openConfirmationModal(`Excluir ${deleteBtn.dataset.name}?`, "Todos os registos associados serão perdidos.", async () => {
+                        try { await api.deletePatient(deleteBtn.dataset.id); await refreshAllData(); ui.showToast("Paciente excluído."); }
+                        catch(err) { ui.showToast("Erro ao excluir.", true); }
+                    });
+                }
+            });
+
+            document.body.addEventListener('click', e => {
+                if (e.target.id === 'add-record-btn') { dom.modals.formContent.innerHTML = ui.getRecordFormHTML(); ui.showModal('form'); }
+                if (e.target.id === 'export-pdf-btn') { generatePDF(); }
+                const deleteBtn = e.target.closest('.delete-record-btn');
+                if (deleteBtn) {
+                    openConfirmationModal("Excluir registo?", "Esta ação é permanente.", async () => {
+                        try { await api.deleteRecord(appState.currentPatientId, deleteBtn.dataset.id); await refreshAllData(); ui.showToast("Registo excluído."); }
+                        catch(err) { ui.showToast("Erro ao excluir.", true); }
+                    });
+                }
+            });
+
+             dom.modals.form.addEventListener('click', async e => {
+                if (e.target === dom.modals.form || e.target.classList.contains('btn-cancel')) { ui.hideModal('form'); return; }
+                const form = e.target.closest('form');
+                if (!form || e.target.tagName !== 'BUTTON' || e.target.type !== 'submit') return;
+                
+                e.preventDefault();
+                const btn = form.querySelector('button[type="submit"]');
+                ui.setLoading(btn, true);
+                
+                try {
+                    const formData = new FormData(form);
+                    if (form.id === 'patient-form') {
+                        const data = { name: formData.get('patient-name'), cpf: formData.get('patient-cpf'), dob: formData.get('patient-dob'), gender: formData.get('patient-gender'), diagnosis: formData.get('patient-diagnosis') };
+                        await api.addOrUpdatePatient(data, form.dataset.id);
+                        ui.showToast("Paciente salvo!");
+                    } else if (form.id === 'record-form') {
+                        const data = {
+                            estadoGeral: formData.get('record-estado'),
+                            saturacao: Number(formData.get('record-saturacao')) || null,
+                            batimentos: Number(formData.get('record-batimentos')) || null,
+                            respiracao: Number(formData.get('record-respiracao')) || null,
+                            temperatura: parseFloat(String(formData.get('record-temperatura')).replace(',', '.')) || null,
+                            pressao: formData.get('record-pressao') || null,
+                            glicemia: Number(formData.get('record-glicemia')) || null,
+                            notas: formData.get('record-notas') || null,
+                        };
+                        await api.addRecord(appState.currentPatientId, data);
+                        ui.showToast("Registo salvo!");
+                    }
+                    ui.hideModal('form');
+                    await refreshAllData();
+                } catch(err) { console.error(err); ui.showToast("Erro ao salvar.", true); }
+                finally { ui.setLoading(btn, false); }
+            });
+            dom.modals.confirmCancelBtn.addEventListener('click', () => ui.hideModal('confirm'));
+        }
+
+        init();
+    </script>
+</body>
+</html>
