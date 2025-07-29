@@ -10,7 +10,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Chart.js para visualização de dados -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
@@ -165,7 +164,6 @@
         <div id="main-app-view" class="view">
             <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden opacity-0"></div>
             <div class="flex h-screen" style="background-color: var(--background);">
-                <!-- Sidebar -->
                 <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-col p-4 lg:flex lg:relative lg:translate-x-0">
                     <div class="flex items-center justify-between gap-3 mb-10 px-2">
                         <div class="flex items-center gap-3">
@@ -188,9 +186,7 @@
                     </div>
                 </aside>
 
-                <!-- Main Content -->
                 <main class="flex-1 flex flex-col h-screen">
-                    <!-- Top Bar for mobile -->
                     <header class="lg:hidden p-4 sticky top-0 z-30 flex justify-between items-center border-b" style="background-color: var(--card); border-color: var(--border);">
                         <button id="menu-btn" style="color: var(--text-secondary);">
                              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -200,7 +196,6 @@
                     </header>
                     
                     <div class="flex-1 overflow-y-auto">
-                        <!-- Dashboard Page -->
                         <div id="dashboard-content" class="page-content active">
                             <div class="p-4 sm:p-8">
                                 <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6">
@@ -234,7 +229,6 @@
                             </div>
                         </div>
                         
-                        <!-- Patients List Page -->
                         <div id="patients-list-content" class="page-content">
                              <div class="p-4 sm:p-8">
                                 <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
@@ -245,7 +239,6 @@
                              </div>
                         </div>
                         
-                        <!-- Patient Detail/Analytics Page -->
                         <div id="patient-detail-content" class="page-content">
                             <div class="p-4 sm:p-8">
                                <div id="patient-header-container"></div>
@@ -283,6 +276,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, addDoc, getDocs, query, where, orderBy, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAnalytics, logEvent, setUserId, setUserProperties } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBTDgwIWpksq1Mq0ishsip-GjeCg-HfciU",
@@ -297,6 +291,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const analytics = getAnalytics(app);
         const googleProvider = new GoogleAuthProvider();
 
         const appState = { user: null, patients: [], records: new Map(), currentPatientId: null, charts: {}, clockInterval: null };
@@ -391,6 +386,11 @@
                 document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
                 document.getElementById(pageId).classList.add('active');
                 dom.main.navLinks.forEach(l => l.classList.toggle('active', l.dataset.page === pageId));
+                
+                logEvent(analytics, 'screen_view', {
+                    firebase_screen: pageId, 
+                    screen_name: pageId 
+                });
             },
             setLoading(btn, isLoading) {
                 const text = btn.querySelector('.btn-text');
@@ -468,7 +468,7 @@
                         <div class="w-2 h-10 rounded-full ${status.bgColorClass.replace('100', '500').replace('dark:bg-','bg-')} mt-1"></div>
                         <div>
                             <p class="font-semibold">${patient.name}</p>
-                            <p class="text-xs font-bold ${status.colorClass}">${status.text} <span class="font-normal" style="color: var(--text-secondary);">(${status.reason})</span></p>
+                            <p class="text-xs font-bold ${status.colorClass}">${status.text} <span class="font-normal" style="color: var(--text-secondary);">(${status.reason || 'N/A'})</span></p>
                         </div>
                     </div>`;
             },
@@ -494,7 +494,6 @@
                     container.innerHTML = `<p class="text-center p-8" style="color: var(--text-secondary);">Nenhum paciente registado.</p>`; return;
                 }
                 container.innerHTML = `
-                    <!-- Vista de Tabela para Desktop -->
                     <div class="hidden md:block">
                         <table class="w-full text-left">
                             <thead class="border-b text-sm" style="border-color: var(--border); color: var(--text-secondary);">
@@ -503,7 +502,6 @@
                             <tbody>${appState.patients.map(p => this.createPatientRowHTML(p)).join('')}</tbody>
                         </table>
                     </div>
-                    <!-- Vista de Cartões para Mobile -->
                     <div class="md:hidden space-y-4 p-2">
                         ${appState.patients.map(p => this.createPatientCardHTML(p)).join('')}
                     </div>
@@ -847,11 +845,15 @@
                 });
             },
             async addOrUpdatePatient(data, id) {
+                 logEvent(analytics, id ? 'edit_patient' : 'add_patient');
                  if (id) { await setDoc(doc(db, "patients", id), { ...data, userId: appState.user.uid }, { merge: true }); return { id }; } 
                  else { return await addDoc(collection(db, "patients"), { ...data, userId: appState.user.uid }); }
             },
             deletePatient: async (id) => await deleteDoc(doc(db, "patients", id)),
-            addRecord: async (patientId, data) => await addDoc(collection(db, `patients/${patientId}/records`), { ...data, date: serverTimestamp() }),
+            addRecord: async (patientId, data) => {
+                logEvent(analytics, 'add_clinical_record');
+                return await addDoc(collection(db, `patients/${patientId}/records`), { ...data, date: serverTimestamp() })
+            },
             deleteRecord: async (patientId, recordId) => await deleteDoc(doc(db, `patients/${patientId}/records`, recordId)),
         };
 
@@ -884,10 +886,12 @@
             try {
                 if (method === 'google') await signInWithPopup(auth, googleProvider);
                 else await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+                logEvent(analytics, 'login', { method: method });
             } catch (error) { ui.showToast(utils.mapAuthError(error.code), true); } 
             finally { ui.setLoading(btn, false); }
         }
         function handleLogout() {
+            logEvent(analytics, 'logout');
             signOut(auth);
             if(appState.clockInterval) clearInterval(appState.clockInterval);
         }
@@ -910,6 +914,8 @@
         function generatePDF() {
             if (!appState.currentPatientId) return;
             ui.showToast("A gerar PDF...");
+            logEvent(analytics, 'export_pdf', { patient_id: appState.currentPatientId });
+            
             const patient = appState.patients.find(p => p.id === appState.currentPatientId);
             const records = appState.records.get(appState.currentPatientId);
             const { jsPDF } = window.jspdf; const docPDF = new jsPDF();
@@ -935,25 +941,31 @@
             const updateIcons = (isDark) => dom.main.themeToggles.forEach(btn => btn.innerHTML = isDark ? sunIcon : moonIcon);
 
             const setTheme = (isDark) => {
-                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                const newTheme = isDark ? 'dark' : 'light';
+                // Evita registrar o evento na primeira carga, apenas em mudanças reais
+                if (localStorage.getItem('theme') !== newTheme) {
+                    logEvent(analytics, 'change_theme', { theme: newTheme });
+                }
+                localStorage.setItem('theme', newTheme);
                 dom.html.classList.toggle('dark', isDark);
                 updateIcons(isDark);
                 
-                // Força a re-leitura das variáveis CSS e atualiza os gráficos
                 setTimeout(() => {
                     const newTextColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
                     const newGridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
 
                     Object.values(appState.charts).forEach(chart => {
-                        if(chart.options.scales){
-                           Object.values(chart.options.scales).forEach(axis => {
-                               if(axis.grid) axis.grid.color = newGridColor;
-                               if(axis.ticks) axis.ticks.color = newTextColor;
-                           });
+                        if(chart && chart.options){
+                           if(chart.options.scales){
+                               Object.values(chart.options.scales).forEach(axis => {
+                                   if(axis.grid) axis.grid.color = newGridColor;
+                                   if(axis.ticks) axis.ticks.color = newTextColor;
+                               });
+                            }
+                            if(chart.options.plugins.legend) chart.options.plugins.legend.labels.color = newTextColor;
+                            if(chart.options.plugins.title) chart.options.plugins.title.color = newTextColor;
+                            chart.update();
                         }
-                        if(chart.options.plugins.legend) chart.options.plugins.legend.labels.color = newTextColor;
-                        if(chart.options.plugins.title) chart.options.plugins.title.color = newTextColor;
-                        chart.update();
                     });
                 }, 50);
             };
@@ -977,6 +989,12 @@
                     try {
                         const userData = await api.handleUserRegistration(user);
                         appState.user = { uid: user.uid, email: user.email, name: userData.name };
+                        
+                        setUserId(analytics, user.uid);
+                        setUserProperties(analytics, { 
+                            nome_usuario: appState.user.name.split(' ')[0] 
+                        });
+                        
                         dom.main.greeting.textContent = `Olá, ${appState.user.name.split(' ')[0]}`;
                         ui.showView('main-app-view'); ui.showPage('dashboard-content');
                         const updateClock = () => {
@@ -1005,6 +1023,7 @@
                 try {
                     const { user } = await createUserWithEmailAndPassword(auth, e.target.elements['register-email'].value, e.target.elements['register-password'].value);
                     await api.handleUserRegistration(user, e.target.elements['register-name'].value);
+                    logEvent(analytics, 'sign_up', { method: 'email' });
                 } catch(err) { ui.showToast(utils.mapAuthError(err.code), true); }
                 finally { ui.setLoading(btn, false); }
             });
@@ -1044,7 +1063,12 @@
                     ui.showPage('patient-detail-content');
                 } else if (deleteBtn) {
                     openConfirmationModal(`Excluir ${deleteBtn.dataset.name}?`, "Todos os registos associados serão perdidos.", async () => {
-                        try { await api.deletePatient(deleteBtn.dataset.id); await refreshAllData(); ui.showToast("Paciente excluído."); }
+                        try { 
+                            await api.deletePatient(deleteBtn.dataset.id); 
+                            logEvent(analytics, 'delete_patient');
+                            await refreshAllData(); 
+                            ui.showToast("Paciente excluído."); 
+                        }
                         catch(err) { ui.showToast("Erro ao excluir.", true); }
                     });
                 }
@@ -1056,7 +1080,12 @@
                 const deleteBtn = e.target.closest('.delete-record-btn');
                 if (deleteBtn) {
                     openConfirmationModal("Excluir registo?", "Esta ação é permanente.", async () => {
-                        try { await api.deleteRecord(appState.currentPatientId, deleteBtn.dataset.id); await refreshAllData(); ui.showToast("Registo excluído."); }
+                        try { 
+                            await api.deleteRecord(appState.currentPatientId, deleteBtn.dataset.id); 
+                            logEvent(analytics, 'delete_clinical_record');
+                            await refreshAllData(); 
+                            ui.showToast("Registo excluído."); 
+                        }
                         catch(err) { ui.showToast("Erro ao excluir.", true); }
                     });
                 }
