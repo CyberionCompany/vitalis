@@ -1,0 +1,21 @@
+{
+  "name": "Vitalis - Análise Clínica Inteligente",
+  "short_name": "Vitalis",
+  "description": "Vitalis é um sistema de monitoramento de sinais vitais que auxilia profissionais da saúde no controle e registro de pacientes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#4ab0ea",
+  "icons": [
+    {
+      "src": "logo-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
